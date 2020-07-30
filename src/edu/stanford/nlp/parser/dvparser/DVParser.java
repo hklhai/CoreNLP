@@ -1,4 +1,4 @@
-package edu.stanford.nlp.parser.dvparser; 
+package edu.stanford.nlp.parser.dvparser;
 import edu.stanford.nlp.util.logging.Redwood;
 
 import java.io.FileFilter;
@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Random;
+
 import edu.stanford.nlp.io.IOUtils;
 import edu.stanford.nlp.io.RuntimeIOException;
 import edu.stanford.nlp.ling.Word;
@@ -41,22 +41,26 @@ public class DVParser  {
 
   /** A logger for this class */
   private static Redwood.RedwoodChannels log = Redwood.channels(DVParser.class);
-  DVModel dvModel;
-  LexicalizedParser parser;
-  Options op;
+  final DVModel dvModel;
+  final LexicalizedParser parser;
+  final Options op;
 
   public Options getOp() {
     return op;
   }
 
-  DVModel getDVModel() {
+  public DVModel getDVModel() {
     return dvModel;
+  }
+
+  public LexicalizedParser getBaseParser() {
+    return parser;
   }
 
   private static final NumberFormat NF = new DecimalFormat("0.00");
   private static final NumberFormat FILENAME = new DecimalFormat("0000");
 
-  static public List<Tree> getTopParsesForOneTree(LexicalizedParser parser, int dvKBest, Tree tree,
+  public static List<Tree> getTopParsesForOneTree(LexicalizedParser parser, int dvKBest, Tree tree,
                                                   TreeTransformer transformer) {
     ParserQuery pq = parser.parserQuery();
     List<Word> sentence = tree.yieldWords();
@@ -224,7 +228,7 @@ public class DVParser  {
     }
   }
 
-  static final int MINIMIZER = 3;
+  private static final int MINIMIZER = 3;
 
   public void executeOneTrainingBatch(List<Tree> trainingBatch, IdentityHashMap<Tree, byte[]> compressedParses, double[] sumGradSquare) {
     Timing convertTiming = new Timing();

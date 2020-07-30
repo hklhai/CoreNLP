@@ -1674,9 +1674,9 @@ public class Counters  {
     C result = (C) c.getFactory().create();
     for (E key : c.keySet()) {
       double count = c.getCount(key);
-      double noise = -Math.log(1.0 - random.nextDouble()); // inverse of CDF for
-                                                           // exponential
-                                                           // distribution
+      // inverse of CDF for exponential distribution
+      // (1.0 - random) to avoid taking log(0) (probably?)
+      double noise = -Math.log(1.0 - random.nextDouble());
       // log.info("noise=" + noise);
       double perturbedCount = count + noise * p;
       result.setCount(key, perturbedCount);
@@ -1821,7 +1821,7 @@ public class Counters  {
   private static <E> void loadIntoCounter(String filename, Class<E> c, Counter<E> counter) throws RuntimeException {
     try {
       Constructor<E> m = c.getConstructor(String.class);
-      BufferedReader in = IOUtils.getBufferedFileReader(filename);
+      BufferedReader in = IOUtils.readerFromString(filename);
       for (String line; (line = in.readLine()) != null;) {
         String[] tokens = line.trim().split("\\s+");
         if (tokens.length != 2) throw new RuntimeException();
@@ -1869,9 +1869,8 @@ public class Counters  {
     try {
       Constructor<T1> m1 = t1.getConstructor(String.class);
       Constructor<T2> m2 = t2.getConstructor(String.class);
-      BufferedReader in = IOUtils.getBufferedFileReader(filename);// new
-                                                                  // BufferedReader(new
-                                                                  // FileReader(filename));
+      // instead of new BufferedReader(new FileReader(filename));
+      BufferedReader in = IOUtils.readerFromString(filename);
       for (String line; (line = in.readLine()) != null;) {
         String[] tuple = line.trim().split("\t");
         String outer = tuple[0];
@@ -1890,9 +1889,8 @@ public class Counters  {
     try {
       Constructor<T1> m1 = t1.getConstructor(String.class);
       Constructor<T2> m2 = t2.getConstructor(String.class);
-      BufferedReader in = IOUtils.getBufferedFileReader(filename);// new
-                                                                  // BufferedReader(new
-                                                                  // FileReader(filename));
+      // new BufferedReader(new FileReader(filename));
+      BufferedReader in = IOUtils.readerFromString(filename);
       for (String line; (line = in.readLine()) != null;) {
         String[] tuple = line.trim().split("\t");
         String outer = tuple[0];

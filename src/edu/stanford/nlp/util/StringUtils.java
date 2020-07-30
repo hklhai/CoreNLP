@@ -7,6 +7,7 @@ import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.ling.HasOffset;
 import edu.stanford.nlp.ling.HasWord;
 import edu.stanford.nlp.math.SloppyMath;
+import edu.stanford.nlp.pipeline.LanguageInfo;
 import edu.stanford.nlp.util.logging.Redwood;
 
 import java.io.*;
@@ -62,11 +63,13 @@ public class StringUtils  {
   private StringUtils() {}
 
   public static final String[] EMPTY_STRING_ARRAY = new String[0];
+  private static final String LANG = "lang";
   private static final String PROP = "prop";
   private static final String PROPS = "props";
   private static final String PROPERTIES = "properties";
   private static final String ARGS = "args";
   private static final String ARGUMENTS = "arguments";
+
 
   /**
    * Say whether this regular expression can be found inside
@@ -441,13 +444,56 @@ public class StringUtils  {
 
   /**
    * Splits on whitespace (\\s+).
+   * <br>
+   * Note that this follows Java split style, meaning leading spaces
+   * will result in an empty string and trailing spaces will be cut off.
    * @param s String to split
    * @return List<String> of split strings
    */
   public static List<String> split(String s) {
     return split(s, "\\s+");
   }
+  
+  /**
+   * Splits on the given delimiter and returns the delimiters as well.
+   * <br>
+   * For expressions where the expression appears inside itself this may not work.
+   * <br>
+   * See http://stackoverflow.com/a/2206432
+   *
+   * @param s String to split
+   * @param separator Delimiter to use for splitting
+   * @return List<String> of split strings
+   */
+  public static List<String> splitKeepDelimiter(String s, String separator) {
+    return split(s, String.format("((?<=(?:%1$s))|(?=(?:%1$s)))", separator));
+  }
 
+  /**
+   * Split the text into pieces based on newlines.  Include the newline tokens in the pieces.
+   *
+   * @param s String to splits
+   */
+  public static List<String> splitLinesKeepNewlines(String s) {
+    List<String> pieces = StringUtils.splitKeepDelimiter(s, "\\R");
+
+    // The delimeter regex trick seems to split \r \n into two
+    // separate matches.  We want to treat them as the same newline
+    List<String> newPieces = new ArrayList<>();
+    for (int i = 0; i < pieces.size(); ++i) {
+      if (i < pieces.size() - 1 &&
+          pieces.get(i).equals("\r") &&
+          pieces.get(i + 1).equals("\n")) {
+        newPieces.add("\r\n");
+        i = i + 1;
+      } else {
+        newPieces.add(pieces.get(i));
+      }
+    }
+
+    return newPieces;
+  }
+  
   /**
    * Splits the given string using the given regex as delimiters.
    * This method is the same as the String.split() method (except it throws
@@ -830,9 +876,9 @@ public class StringUtils  {
 
   /**
    * Parses command line arguments into a Map. Arguments of the form
-   * <p/>
+   * <br>
    * {@code -flag1 arg1a arg1b ... arg1m -flag2 -flag3 arg3a ... arg3n}
-   * <p/>
+   * <br>
    * will be parsed so that the flag is a key in the Map (including
    * the hyphen) and its value will be a {@link String}[] containing
    * the optional arguments (if present).  The non-flag values not
@@ -852,9 +898,9 @@ public class StringUtils  {
 
   /**
    * Parses command line arguments into a Map. Arguments of the form
-   * <p/>
+   * <br>
    * {@code -flag1 arg1a arg1b ... arg1m -flag2 -flag3 arg3a ... arg3n}
-   * <p/>
+   * <br>
    * will be parsed so that the flag is a key in the Map (including
    * the hyphen) and its value will be a {@link String}[] containing
    * the optional arguments (if present).  The non-flag values not
@@ -864,16 +910,16 @@ public class StringUtils  {
    * can be specified as an {@link Integer} value of the appropriate
    * flag key in the {@code flagsToNumArgs} {@link Map}
    * argument. (By default, flags cannot take arguments.)
-   * <p/>
+   * <br>
    * Example of usage:
-   * <p/>
+   * <br>
    * <code>
    * Map flagsToNumArgs = new HashMap();
    * flagsToNumArgs.put("-x",new Integer(2));
    * flagsToNumArgs.put("-d",new Integer(1));
    * Map result = argsToMap(args,flagsToNumArgs);
    * </code>
-   * <p/>
+   * <br>
    * If a given flag appears more than once, the extra args are appended to
    * the String[] value for that flag.
    *
@@ -979,7 +1025,8 @@ public class StringUtils  {
         } else {
           value = join(flagArgs, " ");
         }
-        if (key.equalsIgnoreCase(PROP) || key.equalsIgnoreCase(PROPS) || key.equalsIgnoreCase(PROPERTIES) || key.equalsIgnoreCase(ARGUMENTS) || key.equalsIgnoreCase(ARGS)) {
+        if (key.equalsIgnoreCase(PROP) || key.equalsIgnoreCase(PROPS) || key.equalsIgnoreCase(PROPERTIES) ||
+                key.equalsIgnoreCase(ARGUMENTS) || key.equalsIgnoreCase(ARGS) || key.equalsIgnoreCase(LANG)) {
           result.setProperty(PROPERTIES, value);
         } else {
           result.setProperty(key, value);
@@ -995,6 +1042,8 @@ public class StringUtils  {
     /* Processing in reverse order, add properties that aren't present only. Thus, later ones override earlier ones. */
     while (result.containsKey(PROPERTIES)) {
       String file = result.getProperty(PROPERTIES);
+      if (LanguageInfo.isStanfordCoreNLPSupportedLang(file))
+              file = LanguageInfo.getLanguagePropertiesFile(file);
       result.remove(PROPERTIES);
       Properties toAdd = new Properties();
       BufferedReader reader = null;
@@ -1369,7 +1418,7 @@ public class StringUtils  {
     if (b.length() > 0) {
       result.add(b.toString());
     }
-    return result.toArray(new String[result.size()]);
+    return result.toArray(EMPTY_STRING_ARRAY);
   }
 
   /**
@@ -1663,6 +1712,62 @@ public class StringUtils  {
     return (Character.isUpperCase(s.charAt(0)));
   }
 
+  public static String toTitleCase(String s) {
+    StringBuilder sb = new StringBuilder();
+    int off = 0;
+    int len = s.length();
+    char prevChar = ' ';
+    while (off < len) {
+      char currChar = (char) s.codePointAt(off);
+      if (Character.isWhitespace(prevChar) && !Character.isWhitespace(currChar)) {
+        sb.append(Character.toUpperCase(currChar));
+      } else {
+        sb.append(Character.toLowerCase(currChar));
+      }
+      prevChar = currChar;
+      off += Character.charCount(currChar);
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Check if every word in a string begins with an uppercase and the rest is lower case (e.g. Title Case)
+   *
+   * @param s a string
+   * @return true if the string is Title case
+   *         false otherwise
+   */
+  public static boolean isTitleCase(String s) {
+    String[] words = s.split("\\s+");
+    for (String w : words) {
+      if (!(Character.isUpperCase(w.charAt(0)) && (w.substring(1).toLowerCase().equals(w.substring(1))))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Check if every non whitespace character is upper case (e.g. TITLE CASE)
+   *
+   * @param s a string
+   * @return true if the string is Title case
+   *         false otherwise
+   */
+  public static boolean isAllUpperCase(String s) {
+    int off = 0;
+    int len = s.length();
+    while (off < len) {
+      char currChar = (char) s.codePointAt(off);
+      if (!Character.isUpperCase(currChar) && !Character.isWhitespace(currChar)) {
+        return false;
+      }
+      off += Character.charCount(currChar);
+    }
+    return true;
+  }
+
+
   public static String searchAndReplace(String text, String from, String to) {
     from = escapeString(from, new char[]{'.', '[', ']', '\\'}, '\\'); // special chars in regex
     Pattern p = Pattern.compile(from);
@@ -1911,7 +2016,7 @@ public class StringUtils  {
 
 
   /**
-   * Strip directory from filename.  Like Unix 'basename'. <p/>
+   * Strip directory from filename.  Like Unix 'basename'. <br>
    *
    * Example: {@code getBaseName("/u/wcmac/foo.txt") ==> "foo.txt"}
    */
@@ -1922,9 +2027,9 @@ public class StringUtils  {
   /**
    * Strip directory and suffix from filename.  Like Unix 'basename'.
    *
-   * Example: {@code getBaseName("/u/wcmac/foo.txt", "") ==> "foo.txt"}<br/>
-   * Example: {@code getBaseName("/u/wcmac/foo.txt", ".txt") ==> "foo"}<br/>
-   * Example: {@code getBaseName("/u/wcmac/foo.txt", ".pdf") ==> "foo.txt"}<br/>
+   * Example: {@code getBaseName("/u/wcmac/foo.txt", "") ==> "foo.txt"}<br>
+   * Example: {@code getBaseName("/u/wcmac/foo.txt", ".txt") ==> "foo"}<br>
+   * Example: {@code getBaseName("/u/wcmac/foo.txt", ".pdf") ==> "foo.txt"}<br>
    */
   public static String getBaseName(String fileName, String suffix) {
     return getBaseName(fileName, suffix, "/");
@@ -1933,8 +2038,8 @@ public class StringUtils  {
   /**
    * Strip directory and suffix from the given name.  Like Unix 'basename'.
    *
-   * Example: {@code getBaseName("/tmp/foo/bar/foo", "", "/") ==> "foo"}<br/>
-   * Example: {@code getBaseName("edu.stanford.nlp", "", "\\.") ==> "nlp"}<br/>
+   * Example: {@code getBaseName("/tmp/foo/bar/foo", "", "/") ==> "foo"}<br>
+   * Example: {@code getBaseName("edu.stanford.nlp", "", "\\.") ==> "nlp"}<br>
    */
   public static String getBaseName(String fileName, String suffix, String sep) {
     String[] elts = fileName.split(sep);
@@ -2490,7 +2595,7 @@ public class StringUtils  {
     int start = 0; int end = chars.length;
     if(chars[0] == '('){ start += 1; end -= 1; if(chars[end] != ')') throw new IllegalArgumentException("Unclosed paren in encoded array: " + encoded); }
     if(chars[0] == '['){ start += 1; end -= 1; if(chars[end] != ']') throw new IllegalArgumentException("Unclosed bracket in encoded array: " + encoded); }
-    if(chars[0] == '{'){ start += 1; end -= 1; if(chars[end] != '}') throw new IllegalArgumentException("Unclosed bracket in encoded array: " + encoded); }
+    if(chars[0] == '{'){ start += 1; end -= 1; if(chars[end] != '}') throw new IllegalArgumentException("Unclosed bracke in encoded array: " + encoded); }
     // (finite state automaton)
     for (int i=start; i<end; i++) {
       if (chars[i] == '\r') {
@@ -2721,6 +2826,18 @@ public class StringUtils  {
       }
     }
     return sb.toString();
+  }
+
+  /** @return index of pattern (i.e., char position of start of pattern) in s or -1, if not found. */
+  public static int indexOfRegex(Pattern pattern, String s) {
+    Matcher matcher = pattern.matcher(s);
+    return matcher.find() ? matcher.start() : -1;
+  }
+
+  /** @return index of pattern in s or -1, if not found, starting from index. */
+  public static int indexOfRegex(Pattern pattern, String s, int index) {
+    Matcher matcher = pattern.matcher(s);
+    return matcher.find(index) ? matcher.start() : -1;
   }
 
 }

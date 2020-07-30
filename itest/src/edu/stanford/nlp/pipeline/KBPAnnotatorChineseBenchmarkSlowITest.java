@@ -1,18 +1,19 @@
 package edu.stanford.nlp.pipeline;
 
-import edu.stanford.nlp.util.StringUtils;
-import java.util.HashMap;
 import java.util.Properties;
-import java.util.Set;
+
+import org.junit.Before;
+
+import edu.stanford.nlp.util.StringUtils;
 
 public class KBPAnnotatorChineseBenchmarkSlowITest  extends KBPAnnotatorBenchmark {
 
-  @Override
+  @Before
   public void setUp() {
     // set the English specific settings
-    KBP_DOCS_DIR = "/u/scr/nlp/data/kbp-benchmark/chinese/kbp-docs-chinese";
-    GOLD_RELATIONS_PATH = "/u/scr/nlp/data/kbp-benchmark/chinese/kbp-gold-relations-chinese.txt";
-    KBP_MINIMUM_SCORE = .280;
+    KBP_DOCS_DIR = "/u/nlp/data/kbp-resources/benchmark/chinese/kbp-docs-chinese";
+    GOLD_RELATIONS_PATH = "/u/nlp/data/kbp-resources/benchmark/chinese/kbp-gold-relations-chinese.txt";
+    KBP_MINIMUM_SCORE = .31;
     // load the gold relations from gold relations file
     loadGoldData();
     // set up the pipeline

@@ -23,28 +23,24 @@ public class TrainCRFClassifierSlowITest {
     StanfordRedwoodConfiguration.apply(PropertiesUtils.asProperties(
             "log.file", crfTrainingWorkingDir + "/german-crf.results"));
     // delete the model if present
-    File originalModelFile = new File(crfTrainingWorkingDir, "german.hgc_175m_600.crf.ser.gz");
+    File originalModelFile = new File(crfTrainingWorkingDir, "german.distsim.crf.ser.gz");
     originalModelFile.delete();
     // train the new model
     CRFClassifier.main(new String[] {
-            "-props", "edu/stanford/nlp/models/ner/german-2018.hgc_175m_600.prop",
-            "-serializeTo", "/dev/null"
+            "-props", "edu/stanford/nlp/models/ner/german.distsim.prop",
+            "-serializeTo", crfTrainingWorkingDir+"/german.distsim.crf.ser.gz"
     });
-    // check for lack of quality drop
-    // CRFClassifier.main(new String[]{"-props",
-    //         "/scr/nlp/data/stanford-corenlp-testing/crf-classifier-training/german-crf-example-test.prop"});
     List<String> germanTrainingResults = IOUtils.linesFromFile(crfTrainingWorkingDir + "/german-crf.results");
     String lastLineOfResults = germanTrainingResults.get(germanTrainingResults.size() - 1);
-    //System.err.println("last line: "+lastLineOfResults.trim());
     Scanner scanner = new Scanner(lastLineOfResults);
     // ignore word "Totals"
     scanner.next();
     double p = scanner.nextDouble();
-    Assert.assertEquals("Precision outside target range", 0.8364, p, 0.001);
+    Assert.assertEquals("Precision outside target range", 0.8628, p, 0.001);
     double r = scanner.nextDouble();
-    Assert.assertEquals("Recall outside target range", 0.691, r, 0.001);
+    Assert.assertEquals("Recall outside target range", 0.7406, r, 0.001);
     double f1 = scanner.nextDouble();
-    Assert.assertEquals("Precision outside target range", 0.7576, f1, 0.001);
+    Assert.assertEquals("F1 outside target range", 0.7969, f1, 0.001);
   }
 
   // Previous results (Totals on CoNLL 2003 testa)

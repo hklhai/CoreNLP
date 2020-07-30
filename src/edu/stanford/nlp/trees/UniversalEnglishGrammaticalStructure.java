@@ -23,7 +23,7 @@ import static edu.stanford.nlp.trees.GrammaticalRelation.*;
 
 /**
  * A GrammaticalStructure for Universal Dependencies English.
- * <p/>
+ * <br>
  * For feeding Stanford parser trees into this class, the Stanford parser should be run with the
  * "-retainNPTmpSubcategories" option for best results!
  *
@@ -245,6 +245,10 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
     if (DEBUG) {
       printListSorted("After converting rel:", sg.typedDependencies());
     }
+    fixCCAttachment(sg);
+    if (DEBUG) {
+      printListSorted("After fixing CC attachment:", sg.typedDependencies());
+    }
   }
 
   @Override
@@ -266,19 +270,19 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
 
 
   /* Semgrex patterns for prepositional phrases. */
-  private static SemgrexPattern PASSIVE_AGENT_PATTERN = SemgrexPattern.compile("{}=gov >nmod=reln ({}=mod >case {word:/^(?i:by)$/}=c1) >auxpass {}");
+  private static SemgrexPattern PASSIVE_AGENT_PATTERN = SemgrexPattern.compile("{}=gov >obl=reln ({}=mod >case {word:/^(?i:by)$/}=c1) >/^aux:pass$/ {}");
   private static SemgrexPattern[] PREP_MW3_PATTERNS = {
-      SemgrexPattern.compile("{}=gov   [>/^nmod$/=reln ({}=mod >case ({}=c1 >mwe {}=c2 >mwe ({}=c3 !== {}=c2) ))]"),
-      SemgrexPattern.compile("{}=gov   [>/^(advcl|acl)$/=reln ({}=mod >/^(mark|case)$/ ({}=c1 >mwe {}=c2 >mwe ({}=c3 !== {}=c2) ))]")
+      SemgrexPattern.compile("{}=gov   [>/^(nmod|obl)$/=reln ({}=mod >case ({}=c1 >fixed {}=c2 >fixed ({}=c3 !== {}=c2) ))]"),
+      SemgrexPattern.compile("{}=gov   [>/^(advcl|acl)$/=reln ({}=mod >/^(mark|case)$/ ({}=c1 >fixed {}=c2 >fixed ({}=c3 !== {}=c2) ))]")
 
   };
   private static SemgrexPattern[] PREP_MW2_PATTERNS = {
-      SemgrexPattern.compile("{}=gov >/^nmod$/=reln ({}=mod >case ({}=c1 >mwe {}=c2))"),
-    SemgrexPattern.compile("{}=gov >/^(advcl|acl)$/=reln ({}=mod >/^(mark|case)$/ ({}=c1 >mwe {}=c2))")
+      SemgrexPattern.compile("{}=gov >/^(nmod|obl)$/=reln ({}=mod >case ({}=c1 >fixed {}=c2))"),
+    SemgrexPattern.compile("{}=gov >/^(advcl|acl)$/=reln ({}=mod >/^(mark|case)$/ ({}=c1 >fixed {}=c2))")
 
   };
   private static SemgrexPattern[] PREP_PATTERNS = {
-      SemgrexPattern.compile("{}=gov   >/^nmod$/=reln ({}=mod >case {}=c1)"),
+      SemgrexPattern.compile("{}=gov   >/^(nmod|obl)$/=reln ({}=mod >case {}=c1)"),
       SemgrexPattern.compile("{}=gov   >/^(advcl|acl)$/=reln ({}=mod >/^(mark|case)$/ {}=c1)")
   };
 
@@ -315,7 +319,8 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
       sgCopy = sg.makeSoftCopy();
       matcher = p.matcher(sgCopy);
       while (matcher.find()) {
-        if (enhanceOnlyNmods && ! matcher.getRelnString("reln").equals("nmod")) {
+        if (enhanceOnlyNmods && ! matcher.getRelnString("reln").equals("nmod")
+                && ! matcher.getRelnString("reln").equals("obl")) {
           continue;
         }
 
@@ -346,7 +351,8 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
       sgCopy = sg.makeSoftCopy();
       matcher = p.matcher(sgCopy);
       while (matcher.find()) {
-        if (enhanceOnlyNmods && ! matcher.getRelnString("reln").equals("nmod")) {
+        if (enhanceOnlyNmods && ! matcher.getRelnString("reln").equals("nmod")
+                && ! matcher.getRelnString("reln").equals("obl")) {
           continue;
         }
 
@@ -372,7 +378,8 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
       sgCopy = sg.makeSoftCopy();
       matcher = p.matcher(sgCopy);
       while (matcher.find()) {
-        if (enhanceOnlyNmods && ! matcher.getRelnString("reln").equals("nmod")) {
+        if (enhanceOnlyNmods && ! matcher.getRelnString("reln").equals("nmod")
+                && ! matcher.getRelnString("reln").equals("obl")) {
           continue;
         }
 
@@ -397,8 +404,7 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
       IndexedWord gov, IndexedWord mod, IndexedWord caseMarker) {
 
     SemanticGraphEdge edge = sg.getEdge(gov, mod);
-    GrammaticalRelation reln = UniversalEnglishGrammaticalRelations.getNmod("agent");
-    edge.setRelation(reln);
+    edge.setRelation(UniversalEnglishGrammaticalRelations.AGENT);
   }
 
 
@@ -443,20 +449,21 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
     edge.setRelation(reln);
   }
 
-  private static final SemgrexPattern PREP_CONJP_PATTERN = SemgrexPattern.compile("{} >case ({}=gov >cc {}=cc >conj {}=conj)");
+  private static final SemgrexPattern PREP_CONJP_PATTERN = SemgrexPattern.compile("{} >/(case|mark)/ ({}=gov  >conj ({} >cc {}=cc) >conj {}=conj)" +
+          "");
 
   /**
    * Expands prepositions with conjunctions such as in the sentence
    * "Bill flies to and from Serbia." by copying the verb resulting
    * in the following relations:
-   * <p/>
-   * {@code conj:and(flies, flies')}<br/>
-   * {@code case(Serbia, to)}<br/>
-   * {@code cc(to, and)}<br/>
-   * {@code conj(to, from)}<br/>
-   * {@code nmod(flies, Serbia)}<br/>
-   * {@code nmod(flies', Serbia)}<br/>
-   * <p/>
+   * <br>
+   * {@code conj:and(flies, flies')}<br>
+   * {@code case(Serbia, to)}<br>
+   * {@code cc(to, and)}<br>
+   * {@code conj(to, from)}<br>
+   * {@code nmod(flies, Serbia)}<br>
+   * {@code nmod(flies', Serbia)}<br>
+   * <br>
    * The label of the conjunct relation includes the conjunction type
    * because if the verb has multiple cc relations then it can be impossible
    * to infer which coordination marker belongs to which conjuncts.
@@ -558,7 +565,7 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
   }
 
 
-  private static final SemgrexPattern PP_CONJP_PATTERN = SemgrexPattern.compile("{} >/^(nmod|acl|advcl)$/ (({}=gov >case {}) >cc {}=cc >conj ({}=conj >case {}))");
+  private static final SemgrexPattern PP_CONJP_PATTERN = SemgrexPattern.compile("{} >/^(nmod|obl|acl|advcl)$/ (({}=gov >/(case|mark)/ {}) >conj ({} >/(case|mark)/ {} >cc {}=cc) >conj ({}=conj >/(case|mark)/ {}))");
 
 
   /**
@@ -566,14 +573,14 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
    * "Bill flies to France and from Serbia." by copying the verb
    * that governs the prepositional phrase resulting in the following
    * relations:
-   * <p/>
-   * {@code conj:and(flies, flies')}<br/>
-   * {@code case(France, to)}<br/>
-   * {@code cc(flies, and)}<br/>
-   * {@code case(Serbia, from)}<br/>
-   * {@code nmod(flies, France)}<br/>
-   * {@code nmod(flies', Serbia)}<br/>
-   * <p/>
+   * <br>
+   * {@code conj:and(flies, flies')}<br>
+   * {@code case(France, to)}<br>
+   * {@code cc(flies, and)}<br>
+   * {@code case(Serbia, from)}<br>
+   * {@code nmod(flies, France)}<br>
+   * {@code nmod(flies', Serbia)}<br>
+   * <br>
    * The label of the conjunct relation includes the conjunction type
    * because if the verb has multiple cc relations then it can be impossible
    * to infer which coordination marker belongs to which conjuncts.
@@ -641,14 +648,16 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
       /* Add relation to copy node. */
       sg.addEdge(conjGov, nmodGovCopy, CONJUNCT, Double.NEGATIVE_INFINITY, false);
       newConjDeps.add(nmodGovCopy);
+
+       /* Attach CC node to nmodGovCopy */
+      SemanticGraphEdge ccEdge = sg.getEdge(conjDep, ccDep);
+      if (ccEdge != null) {
+        sg.removeEdge(ccEdge);
+        sg.addEdge(nmodGovCopy, ccDep, COORDINATION, Double.NEGATIVE_INFINITY, false);
+      }
+
     }
 
-    /* Attach CC node to conjGov */
-    SemanticGraphEdge edge = sg.getEdge(gov, ccDep);
-    if (edge != null) {
-      sg.removeEdge(edge);
-      sg.addEdge(conjGov, ccDep, COORDINATION, Double.NEGATIVE_INFINITY, false);
-    }
 
     /* Add conjunction information for these relations already at this point.
      * It could be that we add several coordinating conjunctions while collapsing
@@ -673,6 +682,8 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
     }
     if (reln == NOMINAL_MODIFIER) {
       newReln = UniversalEnglishGrammaticalRelations.getNmod(relationName);
+    } else if (reln == OBLIQUE_MODIFIER) {
+      newReln = UniversalEnglishGrammaticalRelations.getObl(relationName);
     } else if (reln == ADV_CLAUSE_MODIFIER) {
       newReln = UniversalEnglishGrammaticalRelations.getAdvcl(relationName);
     } else if (reln == CLAUSAL_MODIFIER) {
@@ -682,19 +693,19 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
   }
 
 
-  private static final SemgrexPattern CONJUNCTION_PATTERN = SemgrexPattern.compile("{}=gov >cc {}=cc >conj {}=conj");
+  private static final SemgrexPattern CONJUNCTION_PATTERN = SemgrexPattern.compile("{}=gov  [>conj ({}=conj >cc {}=cc) |  >conj ({} >cc {}=cc) >conj {}=conj ]" );
 
 
   /**
    * Adds the type of conjunction to all conjunct relations.
-   * <p/>
+   * <br>
    * {@code cc(Marie, and)}, {@code conj(Marie, Chris)} and {@code conj(Marie, John)}
    * become {@code cc(Marie, and)}, {@code conj:and(Marie, Chris)} and {@code conj:and(Marie, John)}.
-   * <p/>
+   * <br>
    * In case multiple coordination marker depend on the same governor
    * the one that precedes the conjunct is appended to the conjunction relation or the
    * first one if no preceding marker exists.
-   * <p/>
+   * <br>
    * Some multi-word coordination markers are collapsed to {@code conj:and} or {@code conj:negcc}.
    * See {@link #conjValue(IndexedWord, SemanticGraph)}.
    *
@@ -747,7 +758,7 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
   }
 
   /* Used by correctWHAttachment */
-  private static final SemgrexPattern XCOMP_PATTERN = SemgrexPattern.compile("{}=root >xcomp {}=embedded >/^(dep|dobj)$/ {}=wh ?>/([di]obj)/ {}=obj");
+  private static final SemgrexPattern XCOMP_PATTERN = SemgrexPattern.compile("{}=root >xcomp {}=embedded >/^(dep|obj)$/ {}=wh ?>/(i?obj)/ {}=obj");
 
   /**
    * Tries to correct complicated cases of WH-movement in
@@ -799,6 +810,38 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
     }
   }
 
+  //TODO: also reattach commas!
+  private static void fixCCAttachment(SemanticGraph sg) {
+
+
+    HashMap<SemanticGraphEdge, Integer> newHeads = new HashMap<>();
+    for (SemanticGraphEdge edge : sg.edgeIterable()) {
+      if (edge.getRelation().equals(UniversalEnglishGrammaticalRelations.COORDINATION)) {
+        // check if "cc" is attached to previous conjunct
+        if (edge.getGovernor().index() < edge.getDependent().index()) {
+          Set<IndexedWord> conjuncts = sg.getChildrenWithReln(edge.getGovernor(), UniversalEnglishGrammaticalRelations.CONJUNCT);
+          int newHead = Integer.MAX_VALUE;
+          for (IndexedWord conjunct : conjuncts) {
+            if (conjunct.index() < newHead && conjunct.index() > edge.getDependent().index()) {
+              newHead = conjunct.index();
+            }
+          }
+
+          if (newHead < Integer.MAX_VALUE) {
+            newHeads.put(edge, newHead);
+          }
+        }
+      }
+    }
+
+    for (Map.Entry<SemanticGraphEdge, Integer> entry : newHeads.entrySet()) {
+      SemanticGraphEdge edge = entry.getKey();
+      IndexedWord newGovernor = sg.getNodeByIndex(entry.getValue());
+      sg.removeEdge(edge);
+      sg.addEdge(newGovernor, edge.getDependent(), edge.getRelation(), edge.getWeight(), edge.isExtra());
+    }
+  }
+
 
   /**
    * What we do in this method is look for temporary dependencies of
@@ -808,7 +851,6 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
    * fighting for", we should have case(which, for).
    */
    private static void convertRel(SemanticGraph sg) {
-
     for (SemanticGraphEdge prep : sg.findAllRelns(PREPOSITION)) {
 
       boolean changedPrep = false;
@@ -817,7 +859,7 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
 
         // todo: It would also be good to add a rule here to prefer ccomp nsubj over dobj if there is a ccomp with no subj
         // then we could get right: Which eco-friendly options do you think there will be on the new Lexus?
-        if (nmod.getRelation() != NOMINAL_MODIFIER && nmod.getRelation() != RELATIVE) {
+        if (nmod.getRelation() != NOMINAL_MODIFIER && nmod.getRelation() != RELATIVE && nmod.getRelation() != OBLIQUE_MODIFIER) {
           continue;
         }
 
@@ -831,14 +873,20 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
         changedPrep = true;
 
         if (nmod.getRelation() == RELATIVE) {
-          nmod.setRelation(NOMINAL_MODIFIER);
+          if (nmod.getGovernor().tag().startsWith("NN")
+                  || nmod.getGovernor().tag().startsWith("PRN")
+                  || nmod.getGovernor().tag().startsWith("DT")) {
+            nmod.setRelation(NOMINAL_MODIFIER);
+          } else {
+            nmod.setRelation(OBLIQUE_MODIFIER);
+          }
         }
 
         break;
       }
 
       if ( ! changedPrep) {
-        prep.setRelation(NOMINAL_MODIFIER);
+        prep.setRelation(OBLIQUE_MODIFIER);
       }
     }
 
@@ -943,7 +991,7 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
    * of the governor.
    * If called with a tree of dependencies and both CCprocess and
    * includeExtras set to false, then the tree structure is preserved.
-   * <p/>
+   * <br>
    *
    * <dl>
    * <dt>nominal modifier dependencies: nmod</dt>
@@ -993,7 +1041,7 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
 
   /**
    * Does some hard coding to deal with relation in CONJP. For now we deal with:
-   * but not, if not, instead of, rather than, but rather GO TO negcc <br/>
+   * but not, if not, instead of, rather than, but rather GO TO negcc <br>
    * as well as, not to mention, but also, & GO TO and.
    *
    * @param cc The head dependency of the conjunction marker
@@ -1301,12 +1349,12 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
 
   /**
    * Add extra nsubj dependencies when collapsing basic dependencies.
-   * <br/>
+   * <br>
    * In the general case, we look for an aux modifier under an xcomp
    * modifier, and assuming there aren't already associated nsubj
    * dependencies as daughters of the original xcomp dependency, we
    * add nsubj dependencies for each nsubj daughter of the aux.
-   * <br/>
+   * <br>
    * There is also a special case for "to" words, in which case we add
    * a dependency if and only if there is no nsubj associated with the
    * xcomp and there is no other aux dependency.  This accounts for
@@ -1372,7 +1420,7 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
     }
   }
 
-  private static final SemgrexPattern CORRECT_SUBJPASS_PATTERN = SemgrexPattern.compile("{}=gov >auxpass {} >/^(nsubj|csubj).*$/ {}=subj");
+  private static final SemgrexPattern CORRECT_SUBJPASS_PATTERN = SemgrexPattern.compile("{}=gov >/^aux:pass$/ {} >/^(nsubj|csubj).*$/ {}=subj");
 
   /**
    * This method corrects subjects of verbs for which we identified an auxpass,
@@ -1445,8 +1493,8 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
 
 
   private static final SemgrexPattern TWO_WORD_PREPS_REGULAR_PATTERN = SemgrexPattern.compile("{}=gov >/(case|advmod)/ ({}=w1 !> {}) >case ({}=w2 !== {}=w1 !> {})");
-  private static final SemgrexPattern TWO_WORD_PREPS_COMPLEX_PATTERN = SemgrexPattern.compile("({}=w1 >nmod ({}=gov2 >case ({}=w2 !> {}))) [ == {$} | < {}=gov ]");
-  private static final SemgrexPattern THREE_WORD_PREPS_PATTERN = SemgrexPattern.compile("({}=w2 >/(nmod|acl|advcl)/ ({}=gov2 >/(case|mark)/ ({}=w3 !> {}))) >case ({}=w1 !> {}) [ < {}=gov | == {$} ]");
+  private static final SemgrexPattern TWO_WORD_PREPS_COMPLEX_PATTERN = SemgrexPattern.compile("({}=w1 >/(nmod|obl)/ ({}=gov2 >case ({}=w2 !> {}))) [ == {$} | < {}=gov ]");
+  private static final SemgrexPattern THREE_WORD_PREPS_PATTERN = SemgrexPattern.compile("({}=w2 >/(nmod|acl|advcl|obl)/ ({}=gov2 >/(case|mark)/ ({}=w3 !> {}))) >case ({}=w1 !> {}) [ < {}=gov | == {$} ]");
 
 
   /**
@@ -1459,7 +1507,6 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
 
     HashMap<String, HashSet<Integer>> bigrams = new HashMap<>();
     HashMap<String, HashSet<Integer>> trigrams = new HashMap<>();
-
 
     List<IndexedWord> vertexList = sg.vertexListSorted();
     int numWords = vertexList.size();
@@ -1724,6 +1771,12 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
 
 
   private static void demoteQuantificationalModifiers(SemanticGraph sg) {
+
+    /* Semgrexes require a graph with a root. */
+    if (sg.getRoots().isEmpty()) {
+      return;
+    }
+
     SemanticGraph sgCopy = sg.makeSoftCopy();
     SemgrexMatcher matcher = QUANT_MOD_3W_PATTERN.matcher(sgCopy);
 
@@ -1766,7 +1819,7 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
   }
 
   private static void demoteQmodMWEHelper(SemanticGraph sg, List<IndexedWord> otherDeps, IndexedWord gov, IndexedWord oldHead) {
-    createMultiWordExpression(sg, gov, QMOD, otherDeps.toArray(new IndexedWord[otherDeps.size()]));
+    createMultiWordExpression(sg, gov, QMOD, otherDeps.toArray(new IndexedWord[0]));
   }
 
 
@@ -1809,6 +1862,11 @@ public class UniversalEnglishGrammaticalStructure extends GrammaticalStructure  
   private static void processNames(SemanticGraph sg) {
 
     if ( ! USE_NAME) {
+      return;
+    }
+
+    /* Semgrexes require a graph with a root. */
+    if (sg.getRoots().isEmpty()) {
       return;
     }
 

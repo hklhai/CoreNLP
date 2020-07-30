@@ -1,16 +1,20 @@
 package edu.stanford.nlp.pipeline;
 
-import junit.framework.TestCase;
-
 import edu.stanford.nlp.ie.util.*;
 import edu.stanford.nlp.io.IOUtils;
 import edu.stanford.nlp.ling.CoreAnnotations;
+import edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations;
+import edu.stanford.nlp.trees.TreeCoreAnnotations;
 import edu.stanford.nlp.util.CoreMap;
+
+import static org.junit.Assert.assertTrue;
 
 import java.io.*;
 import java.util.*;
 
-public class KBPAnnotatorBenchmark extends TestCase {
+import org.junit.Test;
+
+public class KBPAnnotatorBenchmark {
 
   public HashMap<String,String> docIDToText;
   public HashMap<String,Set<String>> docIDToRelations;
@@ -82,6 +86,7 @@ public class KBPAnnotatorBenchmark extends TestCase {
     return foundRelationStrings;
   }
 
+  @Test
   public void testKBPAnnotatorResults() {
     int totalGoldRelations = 0;
     int totalCorrectFoundRelations = 0;
@@ -107,6 +112,13 @@ public class KBPAnnotatorBenchmark extends TestCase {
           relationTriplesForThisDoc.add(rt);
         }
       }
+      System.out.println();
+      System.out.println("gold relations: ");
+      if (docIDToRelations.get(docID) != null) {
+        for (String goldRelation : docIDToRelations.get(docID)) {
+          System.out.println("\t" + goldRelation);
+        }
+      }
       Set<String> foundRelationStrings = convertKBPTriplesToStrings(relationTriplesForThisDoc);
       HashSet<String> intersectionOfFoundAndGold = new HashSet<>(foundRelationStrings);
       if (docIDToRelations.get(docID) != null) {
@@ -116,8 +128,26 @@ public class KBPAnnotatorBenchmark extends TestCase {
       } else {
         totalWrongFoundRelations += foundRelationStrings.size();
       }
+      System.out.println();
+      List<CoreMap> sentences = currAnnotation.get(CoreAnnotations.SentencesAnnotation.class);
+      System.out.println(sentences.get(0).get(CoreAnnotations.TextAnnotation.class)+"\n");
+      if (sentences.get(0).get(TreeCoreAnnotations.TreeAnnotation.class) != null) {
+        System.out.println("Constituency parse: ");
+        System.out.println(sentences.get(0).get(TreeCoreAnnotations.TreeAnnotation.class).pennString());
+      }
+      System.out.println("Dependency parse: ");
+      System.out.println(sentences.get(0).get(SemanticGraphCoreAnnotations.EnhancedPlusPlusDependenciesAnnotation.class).toList());
+      
+      System.out.println("");
+      System.out.println("correct: "+intersectionOfFoundAndGold.size());
+      System.out.println("wrong: "+(foundRelationStrings.size()-intersectionOfFoundAndGold.size()));
+      System.out.println();
       totalGuessRelations += foundRelationStrings.size();
       System.out.println("curr score: ");
+      System.out.println("\ttotal correct: "+totalCorrectFoundRelations);
+      System.out.println("\ttotal wrong: "+totalWrongFoundRelations);
+      System.out.println("\ttotal guesses: "+totalGuessRelations);
+      System.out.println("\ttotal gold relations: "+totalGoldRelations);
       double recall = (((double) totalCorrectFoundRelations)/((double) totalGoldRelations));
       double precision = (((double) totalCorrectFoundRelations)/((double) totalGuessRelations));
       System.out.println("\trecall: "+recall);

@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.Document;
 import edu.stanford.nlp.ling.HasWord;
+import edu.stanford.nlp.ling.Label;
 import edu.stanford.nlp.ling.MultiTokenTag;
 import edu.stanford.nlp.ling.tokensregex.SequenceMatcher;
 import edu.stanford.nlp.ling.tokensregex.SequencePattern;
@@ -81,7 +82,7 @@ public class WordToSentenceProcessor<IN> implements ListProcessor<IN, List<IN>> 
    *  add straight quotes, PTB escaped right brackets (-RRB-, etc.), greater than as close angle bracket,
    *  and those forms in full width range.
    */
-  public static final String DEFAULT_BOUNDARY_FOLLOWERS_REGEX = "[\\p{Pe}\\p{Pf}\"'>＂＇＞]|''|-R[CRS]B-";
+  public static final String DEFAULT_BOUNDARY_FOLLOWERS_REGEX = "[\\p{Pe}\\p{Pf}\"'>＂＇＞)}\\]]|''|’’|-R[CRS]B-";
 
   public static final Set<String> DEFAULT_SENTENCE_BOUNDARIES_TO_DISCARD = Collections.unmodifiableSet(
           Generics.newHashSet(Arrays.asList(WhitespaceLexer.NEWLINE, PTBTokenizer.getNewlineToken())));
@@ -223,6 +224,35 @@ public class WordToSentenceProcessor<IN> implements ListProcessor<IN, List<IN>> 
     }
   }
 
+  private static final Pattern asciiDoubleQuote = Pattern.compile("&quot;|[\u0084\u0093\u201C\u0094\u201D\u201E\u00AB\u00BB\"]");
+
+  /** At present this only tries to avoid adding a straight single/double quote to a sentence when it doesn't plausibly
+   *  go there and should go with the next sentence.  It does this by checking for odd number of that quote type.
+   *
+   *  @param lastSentence The last sentence to which you might want to add the word
+   *  @return Whether it's plausible to add because there was an open quote
+   */
+  private boolean plausibleToAdd(List<IN> lastSentence, String word) {
+    if (!word.equals("\"") && !word.equals("\'")) {
+      return true;
+    }
+    int singleQuoteCount = 0;
+    int doubleQuoteCount = 0;
+    for (IN lastWord : lastSentence) {
+      String lastStr = ((Label) lastWord).value();
+      if (lastStr.equals("\'"))
+        singleQuoteCount += 1;
+      if (lastStr.equals("\""))
+        doubleQuoteCount += 1;
+    }
+    if (word.equals("\"") && (doubleQuoteCount % 2 != 0))
+      return true;
+    else if (word.equals("\'") && (singleQuoteCount % 2 != 0))
+      return true;
+    else
+      return false;
+  }
+
   /**
    * Returns a List of Lists where each element is built from a run
    * of Words in the input Document. Specifically, reads through each word in
@@ -306,7 +336,8 @@ public class WordToSentenceProcessor<IN> implements ListProcessor<IN, List<IN>> 
       }
 
       if ( ! lastSentenceEndForced && lastSentence != null && currentSentence.isEmpty() &&
-              ! lastTokenWasNewline && sentenceBoundaryFollowersPattern.matcher(word).matches()) {
+              ! lastTokenWasNewline && sentenceBoundaryFollowersPattern.matcher(word).matches() &&
+              plausibleToAdd(lastSentence, word)) {
         if ( ! discardToken) {
           lastSentence.add(o);
         }

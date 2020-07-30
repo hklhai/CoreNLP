@@ -7,9 +7,11 @@ import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.stream.Collectors;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.ling.HasIndex;
@@ -156,6 +158,45 @@ public abstract class Tree extends AbstractCollection<Tree> implements Label, La
     return !(kids == null || kids.length == 0 || (kids.length == 1 && kids[0].isLeaf()));
   }
 
+  /**
+   * Returns whether this node is the root of a possibly binary tree.
+   * This happens if the tree and all of its descendants are either
+   * nodes with exactly two children, or are preterminals or leaves.
+   */
+  public boolean isBinary() {
+    if (isLeaf() || isPreTerminal()) {
+      return true;
+    }
+
+    Tree[] kids = children();
+    if (kids.length != 2) {
+      return false;
+    }
+
+    return (kids[0].isBinary() && kids[1].isBinary());
+  }
+
+  /**
+   * Returns whether this node is the root of a possibly binarized
+   * tree.  This is slightly different from "binary" in that nodes
+   * with 1 or 2 children are allowed.  The name is chosen because the
+   * TreeBinarizer produces trees which look like this.
+   */
+  public boolean isBinarized() {
+    if (isLeaf() || isPreTerminal()) {
+      return true;
+    }
+
+    Tree[] kids = children();
+    if (kids.length > 2) {
+      return false;
+    }
+    if (!kids[0].isBinarized())
+      return false;
+    if (kids.length == 2 && !kids[1].isBinarized())
+      return false;
+    return true;
+  }
 
   /**
    * Implements equality for Tree's.  Two Tree objects are equal if they
@@ -633,6 +674,19 @@ public abstract class Tree extends AbstractCollection<Tree> implements Label, La
     return toStringBuilder(sb, label -> (label.value() == null) ? "": label.value());
   }
 
+
+  private static final Pattern LRB_PATTERN = Pattern.compile("[(]");
+  private static final Pattern RRB_PATTERN = Pattern.compile("[)]");
+
+  public static String updateBrackets(String text) {
+    if (text == null) {
+      return text;
+    }
+    text = LRB_PATTERN.matcher(text).replaceAll("-LRB-");
+    text = RRB_PATTERN.matcher(text).replaceAll("-RRB-");
+    return text;
+  }
+
   /**
    * Appends the printed form of a parse tree (as a bracketed String)
    * to a {@code StringBuilder}.
@@ -646,13 +700,16 @@ public abstract class Tree extends AbstractCollection<Tree> implements Label, La
   public StringBuilder toStringBuilder(StringBuilder sb, Function<Label,String> labelFormatter) {
     if (isLeaf()) {
       if (label() != null) {
-        sb.append(labelFormatter.apply(label()));
+        String text = labelFormatter.apply(label());
+        sb.append(updateBrackets(text));
       }
       return sb;
     } else {
       sb.append('(');
       if (label() != null) {
-        sb.append(labelFormatter.apply(label()));
+        // don't update text here - we want to keep -LRB- as a tag, for example
+        String text = labelFormatter.apply(label());
+        sb.append(text);
       }
       Tree[] kids = children();
       if (kids != null) {
@@ -864,19 +921,19 @@ public abstract class Tree extends AbstractCollection<Tree> implements Label, La
   /**
    * Display a node, implementing Penn Treebank style layout
    */
-  private void display(int indent, boolean parentLabelNull, boolean firstSibling, boolean leftSiblingPreTerminal, boolean topLevel, Function<Label,String> labelFormatter, PrintWriter pw) {
+  private void display(int indent, boolean parentLabelNull, boolean firstSibling, boolean leftSiblingPreTerminal, boolean topLevel,
+                       Function<Label,String> labelFormatter, PrintWriter pw) {
     // the condition for staying on the same line in Penn Treebank
-    boolean suppressIndent = (parentLabelNull || (firstSibling && isPreTerminal()) || (leftSiblingPreTerminal && isPreTerminal() && (label() == null || !label().value().startsWith("CC"))));
+    boolean suppressIndent = (parentLabelNull && firstSibling) || (firstSibling && isPreTerminal()) ||
+            (leftSiblingPreTerminal && isPreTerminal() && (label() == null || !label().value().startsWith("CC")));
     if (suppressIndent) {
       pw.print(" ");
-      // pw.flush();
     } else {
       if (!topLevel) {
         pw.println();
       }
       for (int i = 0; i < indent; i++) {
         pw.print("  ");
-        // pw.flush();
       }
     }
     if (isLeaf() || isPreTerminal()) {
@@ -887,7 +944,6 @@ public abstract class Tree extends AbstractCollection<Tree> implements Label, La
     }
     pw.print("(");
     pw.print(labelFormatter.apply(label()));
-    // pw.flush();
     boolean parentIsNull = label() == null || label().value() == null;
     displayChildren(children(), indent + 1, parentIsNull, labelFormatter, pw);
     pw.print(")");
@@ -949,6 +1005,33 @@ public abstract class Tree extends AbstractCollection<Tree> implements Label, La
     pennPrint(new PrintWriter(sw));
     return sw.toString();
   }
+
+  /**
+   * Return String of leaves spanned by this tree assuming they are CoreLabel's
+   * Throws an IllegalArgumentException if the leaves are not CoreLabels that contain
+   * text info as in the typical use case of a Tree generated by a pipeline
+   *
+   * @return The text of the span of this Tree
+   */
+  public String spanString() {
+    // check this Tree supports this method by having properly populated CoreLabel's
+    List<Tree> leaves = this.getLeaves();
+    if (!(leaves.get(0).label() instanceof CoreLabel)) {
+      throw new IllegalArgumentException("Expected leaves to be CoreLabels");
+    } else if (((CoreLabel) leaves.get(0).label()).word() == null) {
+      throw new IllegalArgumentException("Expected CoreLabel's to have text");
+    } else if (((CoreLabel) leaves.get(0).label()).after() == null) {
+      throw new IllegalArgumentException("Expected CoreLabel's to have after() text");
+    }
+    List<CoreLabel> coreLabels = this.getLeaves().stream().map(l -> ((CoreLabel) l.label())).collect(Collectors.toList());
+    // reconstruct original String from CoreLabel fields
+    String spanString = coreLabels.subList(0, Math.max(0, coreLabels.size()-1)).stream().map(
+            cl -> cl.word()+cl.after()).collect(Collectors.joining(""));
+    // don't add the after of the last word
+    spanString += coreLabels.get(coreLabels.size()-1).word();
+    return spanString;
+  }
+
 
   /**
    * Print the tree as done in Penn Treebank merged files.
@@ -1505,7 +1588,7 @@ public abstract class Tree extends AbstractCollection<Tree> implements Label, La
    * leaves.  Null values, if any, are inserted into the list like any
    * other value.  This has been rewritten to thread, so only one List
    * is used.
-   * <p/>
+   * <br>
    * <i>Implementation note:</i> when we summon up enough courage, this
    * method will be changed to take and return a {@code List<W extends TaggedWord>}.
    *
@@ -1830,7 +1913,7 @@ public abstract class Tree extends AbstractCollection<Tree> implements Label, La
     }
     Tree[] kids = children();
     // NB: The below list may not be of type Tree but TreeGraphNode, so we leave it untyped
-    List newKids = new ArrayList(kids.length);
+    List<Tree> newKids = new ArrayList<>(kids.length);
     for (Tree kid : kids) {
       newKids.add(kid.deepCopy(tf, lf));
     }
@@ -2024,7 +2107,7 @@ public abstract class Tree extends AbstractCollection<Tree> implements Label, La
    * of a node's children are pruned, that node is cut as well.
    * A {@code Filter} can assume
    * that it will not be called with a {@code null} argument.
-   * <p/>
+   * <br>
    * For example, the following code excises all PP nodes from a Tree: <br>
    * <tt>
    * Filter<Tree> f = new Filter<Tree> { <br>

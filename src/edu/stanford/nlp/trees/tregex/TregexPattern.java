@@ -111,14 +111,14 @@ import edu.stanford.nlp.util.logging.Redwood;
  * <tr><td>A &gt;- B <td>A is the last child of B
  * <tr><td>A &lt;` B <td>B is the last child of A
  * <tr><td>A &gt;` B <td>A is the last child of B
- * <tr><td>A &lt;i B <td>B is the ith child of A (i > 0)
- * <tr><td>A &gt;i B <td>A is the ith child of B (i > 0)
- * <tr><td>A &lt;-i B <td>B is the ith-to-last child of A (i > 0)
- * <tr><td>A &gt;-i B <td>A is the ith-to-last child of B (i > 0)
+ * <tr><td>A &lt;i B <td>B is the ith child of A (i &gt; 0)
+ * <tr><td>A &gt;i B <td>A is the ith child of B (i &gt; 0)
+ * <tr><td>A &lt;-i B <td>B is the ith-to-last child of A (i &gt; 0)
+ * <tr><td>A &gt;-i B <td>A is the ith-to-last child of B (i &gt; 0)
  * <tr><td>A &lt;: B <td>B is the only child of A
  * <tr><td>A &gt;: B <td>A is the only child of B
- * <tr><td>A &lt;&lt;: B <td>A dominates B via an unbroken chain (length > 0) of unary local trees.
- * <tr><td>A &gt;&gt;: B <td>A is dominated by B via an unbroken chain (length > 0) of unary local trees.
+ * <tr><td>A &lt;&lt;: B <td>A dominates B via an unbroken chain (length &gt; 0) of unary local trees.
+ * <tr><td>A &gt;&gt;: B <td>A is dominated by B via an unbroken chain (length &gt; 0) of unary local trees.
  * <tr><td>A &#36;++ B <td>A is a left sister of B (same as &#36;.. for context-free trees)
  * <tr><td>A &#36;-- B <td>A is a right sister of B (same as &#36;,, for context-free trees)
  * <tr><td>A &#36;+ B <td>A is the immediate left sister of B (same as &#36;. for context-free trees)
@@ -151,6 +151,7 @@ import edu.stanford.nlp.util.logging.Redwood;
  * [a-zA-Z]([a-zA-Z0-9_-])* but also may include letters from other alphabets.)
  * If you want to use other symbols, you can do so by using a regular
  * expression instead of a literal string.
+ * <br>
  * A disjunctive list of literal strings can be given separated by '|'.
  * The special string '__' (two underscores) can be used to match any
  * node.  (WARNING!!  Use of the '__' node description may seriously
@@ -165,7 +166,7 @@ import edu.stanford.nlp.util.logging.Redwood;
  * as in Perl/tgrep, not as {@code matches()};
  * you need to use {@code ^} or {@code $} to constrain matches to
  * the ends of strings.
- *
+ * <br>
  * <b>Chains of relations have a special non-associative semantics:</b>
  * In a chain of relations A op B op C ...,
  * all relations are relative to the first node in
@@ -185,19 +186,19 @@ import edu.stanford.nlp.util.logging.Redwood;
  * {@code A} if {@code B} follows {@code A} and there
  * is no node {@code C} such that {@code B} follows
  * {@code C} and {@code C} follows {@code A}.
- *
+ * <br>
  * Node {@code A} dominates {@code B} through an unbroken
  * chain of unary local trees only if {@code A} is also
  * unary. {@code (A (B))} is a valid example that matches
  * {@code A <<: B}
- *
+ * <br>
  * When specifying that nodes are dominated via an unbroken chain of
  * nodes matching a description {@code C}, the description
  * {@code C} cannot be a full Tregex expression, but only an
  * expression specifying the name of the node.  Negation of this
  * description is allowed.
- *
- * == has the same precedence as the other relations, so the expression
+ * <br>
+ * {@code ==} has the same precedence as the other relations, so the expression
  * {@code A << B == A << C} associates as
  * {@code (((A << B) == A) << C)}, not as
  * {@code ((A << B) == (A << C))}.  (Both expressions are
@@ -234,17 +235,18 @@ import edu.stanford.nlp.util.logging.Redwood;
  *
  * As another example, {@code (VP < VV | < NP % NP) }
  * can be written explicitly as {@code (VP [< VV | [< NP & % NP] ] ) }
- *
+ * <br>
  *
  * Relations can be negated with the '!' operator, in which case the
  * expression will match only if there is no node satisfying the relation.
  * For example {@code (NP !< NNP) } matches only NPs not dominating
- * an NNP.  Label descriptions can also be negated with '!': (NP < !NNP|NNS) matches
- * NPs dominating some node that is not an NNP or an NNS.
-
+ * an NNP.  Label descriptions can also be negated with {@code '!'}: 
+ * {@code (NP < !NNP|NNS)} matches NPs dominating some node
+ * that is not an NNP or an NNS.
+ * <br>
  * Relations can be made optional with the '?' operator.  This way the
- * expression will match even if the optional relation is not satisfied.  This is useful when used together
- *  with node naming (see below).
+ * expression will match even if the optional relation is not satisfied.
+ * This is useful when used together with node naming (see below).
  *
  * <h3>Basic Categories</h3>
  *
@@ -578,7 +580,8 @@ public abstract class TregexPattern implements Serializable  {
    * in which the node is encountered in a depth-first search starting with 1 at top node in the
    * sentence tree.
    *
-   * <li> {@code -extract <tree-file>} extracts the subtree s:n specified by <tt>code</tt> from the specified <tt>tree-file</tt>.  Overrides all other behavior of tregex.  Can't specify multiple encodings etc. yet.
+   * <li> {@code -extract <tree-file>} extracts the subtree s:n specified by <tt>code</tt> from the specified <tt>tree-file</tt>.
+   *     Overrides all other behavior of tregex.  Can't specify multiple encodings etc. yet.
    * <li> {@code -extractFile <code-file> <tree-file>} extracts every subtree specified by the subtree codes in
    *     {@code code-file}, which must appear exactly one per line, from the specified {@code tree-file}.
    *     Overrides all other behavior of tregex. Can't specify multiple encodings etc. yet.
@@ -619,6 +622,8 @@ public abstract class TregexPattern implements Serializable  {
     String reportTreeNumbers = "-n";
     String rootLabelOnly = "-u";
     String oneLine = "-s";
+    String uniqueTrees = "-q";
+
     Map<String,Integer> flagMap = Generics.newHashMap();
     flagMap.put(extractSubtreesOption,2);
     flagMap.put(extractSubtreesFileOption,2);
@@ -642,6 +647,7 @@ public abstract class TregexPattern implements Serializable  {
     flagMap.put(reportTreeNumbers, 0);
     flagMap.put(rootLabelOnly, 0);
     flagMap.put(oneLine, 0);
+    flagMap.put(uniqueTrees, 0);
     Map<String, String[]> argsMap = StringUtils.argsToMap(args, flagMap);
     args = argsMap.get(null);
 
@@ -726,6 +732,9 @@ public abstract class TregexPattern implements Serializable  {
     } else {
       treePrintFormats.append("penn,");
     }
+    if (argsMap.containsKey(uniqueTrees)) {
+      TRegexTreeVisitor.printOnlyUniqueTrees = true;
+    }
 
     HeadFinder hf = new CollinsHeadFinder();
     if(headFinderClassName != null) {
@@ -794,8 +803,8 @@ public abstract class TregexPattern implements Serializable  {
     TreeReaderFactory trf = new TRegexTreeReaderFactory();
     if (treeReaderFactoryClassName != null) {
       try {
-        trf = (TreeReaderFactory) Class.forName(treeReaderFactoryClassName).newInstance();
-      } catch(Exception e) {
+        trf = (TreeReaderFactory) Class.forName(treeReaderFactoryClassName).getDeclaredConstructor().newInstance();
+      } catch (Exception e) {
         throw new RuntimeException("Error occurred while constructing TreeReaderFactory: " + e);
       }
     }
@@ -819,6 +828,7 @@ public abstract class TregexPattern implements Serializable  {
     static boolean printFilename = false;
     static boolean oneMatchPerRootNode = false;
     static boolean reportTreeNumbers = false;
+    static boolean printOnlyUniqueTrees = false;
 
     static TreePrint tp;
     private PrintWriter pw;
@@ -904,6 +914,10 @@ public abstract class TregexPattern implements Serializable  {
           }
           // pw.println();  // TreePrint already puts a blank line in
         } // end if (printMatches)
+
+        if (printOnlyUniqueTrees) {
+          break;
+        }
       } // end while match.find()
     } // end visitTree
 
@@ -920,9 +934,7 @@ public abstract class TregexPattern implements Serializable  {
 
     public TRegexTreeReaderFactory() {
       this(new TreeNormalizer() {
-        /**
-         *
-         */
+
         private static final long serialVersionUID = -2998972954089638189L;
 
         @Override

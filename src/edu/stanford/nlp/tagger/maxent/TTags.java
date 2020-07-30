@@ -6,6 +6,7 @@ import edu.stanford.nlp.tagger.common.Tagger;
 import edu.stanford.nlp.util.Generics;
 import edu.stanford.nlp.util.HashIndex;
 import edu.stanford.nlp.util.Index;
+import edu.stanford.nlp.util.StringUtils;
 
 import java.io.IOException;
 import java.io.DataInputStream;
@@ -15,7 +16,7 @@ import java.util.*;
 /**
  * This class holds the POS tags, assigns them unique ids, and knows which tags
  * are open versus closed class.
- * <p/>
+ * <p>
  * Title:        StanfordMaxEnt<p>
  * Description:  A Maximum Entropy Toolkit<p>
  * Company:      Stanford University<p>
@@ -27,7 +28,8 @@ public class TTags {
 
   private Index<String> index = new HashIndex<>();
   private final Set<String> closed = Generics.newHashSet();
-  private Set<String> openTags = null; /* cache */
+  private Set<String> openTags; // = null; /* cache */
+  private transient String[] openTagsArr; // = null; used for cache
   private final boolean isEnglish; // for speed
   private static final boolean doDeterministicTagExpansion = true;
 
@@ -294,7 +296,7 @@ public class TTags {
    * Returns a list of all open class tags
    * @return set of open tags
    */
-  public Set<String> getOpenTags() {
+  public synchronized Set<String> getOpenTags() {
     if (openTags == null) { /* cache check */
       Set<String> open = Generics.newHashSet();
 
@@ -305,8 +307,23 @@ public class TTags {
       }
 
       openTags = open;
+      openTagsArr = null;
     } // if
     return openTags;
+  }
+
+  /**
+   * Returns a list of all open class tags as an array.
+   * This saves a little time in TestSentence.
+   *
+   * @return array of open tags
+   */
+  public synchronized String[] getOpenTagsArray() {
+    if (openTagsArr == null) {
+      Set<String> open = getOpenTags();
+      openTagsArr = deterministicallyExpandTags(open.toArray(StringUtils.EMPTY_STRING_ARRAY));
+    }
+    return openTagsArr;
   }
 
   protected int add(String tag) {
@@ -353,7 +370,7 @@ public class TTags {
       read(in);
       in.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new RuntimeIOException(e);
     }
   }
 
@@ -369,34 +386,35 @@ public class TTags {
         if (inClosed) closed.add(tag);
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new RuntimeIOException(e);
     }
   }
 
 
   protected boolean isClosed(String tag) {
-    if (openFixed) {
-      return !openTags.contains(tag);
-    } else {
-      return closed.contains(tag);
-    }
+    return openFixed ? !openTags.contains(tag) : closed.contains(tag);
   }
 
   void markClosed(String tag) {
     add(tag);
     closed.add(tag);
+    if (!openFixed) {
+      openTagsArr = null;
+    }
   }
 
+  @SuppressWarnings("unused")
   public void setLearnClosedTags(boolean learn) {
     learnClosedTags = learn;
   }
 
-  public void setOpenClassTags(String[] openClassTags) {
+  public synchronized void setOpenClassTags(String[] openClassTags) {
     openTags = Generics.newHashSet();
     openTags.addAll(Arrays.asList(openClassTags));
     for (String tag : openClassTags) {
       add(tag);
     }
+    openTagsArr = openClassTags;
     openFixed = true;
   }
 
@@ -430,66 +448,59 @@ public class TTags {
    * @return A superset of tags
    */
   String[] deterministicallyExpandTags(String[] tags) {
-    if (isEnglish && doDeterministicTagExpansion) {
-      boolean seenVBN = false;
-      boolean seenVBD =	false;
-      boolean seenVB =	false;
-      boolean seenVBP = false;
-      for (String tag : tags) {
-        char ch = tag.charAt(0);
-        if (ch == 'V') {
-          switch (tag) {
-            case "VBD":
-              seenVBD = true;
-              break;
-            case "VBN":
-              seenVBN = true;
-              break;
-            case "VB":
-              seenVB = true;
-              break;
-            case "VBP":
-              seenVBP = true;
-              break;
-          }
-        }
-      }
-      int toAdd = 0;
-      if ((seenVBN ^ seenVBD)) { // ^ is xor
-        toAdd++;
-      }
-      if (seenVB ^ seenVBP) {
-        toAdd++;
-      }
-      if (toAdd > 0) {
-        int ind = tags.length;
-        String[] newTags = new String[ind + toAdd];
-        System.arraycopy(tags, 0, newTags, 0, tags.length);
-        if (seenVBN && ! seenVBD) {
-          newTags[ind++] = "VBD";
-        } else if (seenVBD && ! seenVBN) {
-          newTags[ind++] = "VBN";
-        }
-        if (seenVB && ! seenVBP) {
-          newTags[ind] = "VBP";
-        } else if (seenVBP && ! seenVB) {
-          newTags[ind] = "VB";
-        }
-        return newTags;
-      } else {
-        return tags;
-      }
-    } else {
+    if (!isEnglish || !doDeterministicTagExpansion) {
       // no tag expansion for other languages currently
       return tags;
     }
+    boolean seenVBN = false, seenVBD = false, seenVB  = false, seenVBP = false;
+    for (String tag : tags) {
+      char ch = tag.charAt(0);
+      if (ch == 'V') {
+        switch (tag) {
+        case "VBD":
+          seenVBD = true;
+          break;
+        case "VBN":
+          seenVBN = true;
+          break;
+        case "VB":
+          seenVB = true;
+          break;
+        case "VBP":
+          seenVBP = true;
+          break;
+        }
+      }
+    }
+    int toAdd = 0;
+    if (seenVBN ^ seenVBD) { // ^ is xor
+      toAdd++;
+    }
+    if (seenVB ^ seenVBP) {
+      toAdd++;
+    }
+    if (toAdd == 0) {
+      return tags;
+    }
+    int ind = tags.length;
+    String[] newTags = new String[ind + toAdd];
+    System.arraycopy(tags, 0, newTags, 0, tags.length);
+    if (seenVBN && ! seenVBD) {
+      newTags[ind++] = "VBD";
+    } else if (seenVBD && ! seenVBN) {
+      newTags[ind++] = "VBN";
+    }
+    if (seenVB && ! seenVBP) {
+      newTags[ind] = "VBP";
+    } else if (seenVBP && ! seenVB) {
+      newTags[ind] = "VB";
+    }
+    return newTags;
   }
 
   @Override
   public String toString() {
-    StringBuilder s = new StringBuilder();
-    s.append(index.toString());
-    s.append(' ');
+    StringBuilder s = new StringBuilder(200).append(index).append(' ');
     if (openFixed) {
       s.append(" OPEN:").append(getOpenTags());
     } else {

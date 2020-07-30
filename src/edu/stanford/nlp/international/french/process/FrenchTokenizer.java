@@ -54,14 +54,21 @@ public class FrenchTokenizer<T extends HasWord> extends AbstractTokenizer<T>  {
   // The underlying JFlex lexer
   private final FrenchLexer lexer;
 
-  // Internal fields compound splitting
+  // Internal fields compound and contraction splitting
+  private static final String SPLIT_COMPOUNDS_OPTION = "splitCompounds";
+  private static final String SPLIT_CONTRACTIONS_OPTION = "splitContractions";
+
   private final boolean splitCompounds;
   private final boolean splitContractions;
   private List<CoreLabel> compoundBuffer;
 
   // Produces the tokenization for parsing used by Green, de Marneffe, and Manning (2011)
-  public static final String FTB_OPTIONS = "ptb3Ellipsis=true,normalizeParentheses=true,ptb3Dashes=false," +
-      "splitContractions=true,splitCompounds=true";
+  public static final String FTB_OPTIONS = "ellipses=ptb3,normalizeParentheses=true,ptb3Dashes=false," +
+    SPLIT_CONTRACTIONS_OPTION + "=true," + SPLIT_COMPOUNDS_OPTION + "=true";
+
+  // Official pipeline default settings for French
+  public static final String DEFAULT_OPTIONS =
+      "invertible,splitCompounds=false,splitContractions=false,quotes=ORIGINAL";
 
   /**
    * Constructor.
@@ -70,6 +77,7 @@ public class FrenchTokenizer<T extends HasWord> extends AbstractTokenizer<T>  {
    * @param tf
    * @param lexerProperties
    * @param splitCompounds
+   * @param splitContractions turn auxquelles into à lesquelles for example
    */
   public FrenchTokenizer(Reader r, LexedTokenFactory<T> tf, Properties lexerProperties,
                          boolean splitCompounds, boolean splitContractions) {
@@ -149,11 +157,12 @@ public class FrenchTokenizer<T extends HasWord> extends AbstractTokenizer<T>  {
 
   /**
    * Splits a contraction marked by the lexer.
-   *
-   * au => a + u =&gt; à + le
-   * aux => a + ux =&gt; à + les
-   * des => de + s =&gt; de + les
-   * du => d + u =&gt; de + le
+   * <br>
+   * au =&gt; a + u =&gt; à + le
+   * aux =&gt; a + ux =&gt; à + les
+   * du =&gt; d + u =&gt; de + le
+   * <br>
+   * des is handled by a special classifier in corenlp.  TODO: handle it here as well
    */
   private CoreLabel processContraction(CoreLabel cl) {
     cl.remove(ParentAnnotation.class);
@@ -197,8 +206,6 @@ public class FrenchTokenizer<T extends HasWord> extends AbstractTokenizer<T>  {
    * A factory for French tokenizer instances.
    *
    * @author Spence Green
-   *
-   * @param <T>
    */
   public static class FrenchTokenizerFactory<T extends HasWord> implements TokenizerFactory<T>, Serializable  {
 
@@ -210,7 +217,7 @@ public class FrenchTokenizer<T extends HasWord> extends AbstractTokenizer<T>  {
     protected boolean splitContractionOption = true;
 
     public static TokenizerFactory<CoreLabel> newTokenizerFactory() {
-      return new FrenchTokenizerFactory<>(new CoreLabelTokenFactory());
+      return new FrenchTokenizerFactory<>(new CoreLabelTokenFactory(), DEFAULT_OPTIONS);
     }
 
     /**
@@ -255,15 +262,19 @@ public class FrenchTokenizer<T extends HasWord> extends AbstractTokenizer<T>  {
       for (String option : optionList) {
         String[] fields = option.split("=");
         if (fields.length == 1) {
-          if (fields[0].equals("splitCompounds")) {
+          if (fields[0].equals(SPLIT_COMPOUNDS_OPTION)) {
             splitCompoundOption = true;
+          } else if (fields[0].equals(SPLIT_CONTRACTIONS_OPTION)) {
+            splitContractionOption = true;
           } else {
             lexerProperties.setProperty(option, "true");
           }
 
         } else if (fields.length == 2) {
-          if (fields[0].equals("splitCompounds")) {
+          if (fields[0].equals(SPLIT_COMPOUNDS_OPTION)) {
             splitCompoundOption = Boolean.valueOf(fields[1]);
+          } else if (fields[0].equals(SPLIT_CONTRACTIONS_OPTION)) {
+            splitContractionOption = Boolean.valueOf(fields[1]);
           } else {
             lexerProperties.setProperty(fields[0], fields[1]);
           }

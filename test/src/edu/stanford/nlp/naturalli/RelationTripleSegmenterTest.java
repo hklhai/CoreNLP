@@ -23,15 +23,15 @@ import java.util.Optional;
 @SuppressWarnings("AssertEqualsBetweenInconvertibleTypes")
 public class RelationTripleSegmenterTest extends TestCase {
 
-  protected Optional<RelationTriple> mkExtraction(String conll) {
+  private static Optional<RelationTriple> mkExtraction(String conll) {
     return mkExtraction(conll, 0, false);
   }
 
-  protected Optional<RelationTriple> mkExtraction(String conll, boolean allNominals) {
+  private static Optional<RelationTriple> mkExtraction(String conll, boolean allNominals) {
     return mkExtraction(conll, 0, allNominals);
   }
 
-  protected Optional<RelationTriple> mkExtraction(String conll, int listIndex) {
+  private static Optional<RelationTriple> mkExtraction(String conll, int listIndex) {
     return mkExtraction(conll, listIndex, false);
   }
 
@@ -43,11 +43,11 @@ public class RelationTripleSegmenterTest extends TestCase {
    * @return A pair of a SemanticGraph and a token list, corresponding to the parse of the sentence
    *         and to tokens in the sentence.
    */
-  protected Pair<SemanticGraph, List<CoreLabel>> mkTree(String conll) {
+  private static Pair<SemanticGraph, List<CoreLabel>> mkTree(String conll) {
     List<CoreLabel> sentence = new ArrayList<>();
     SemanticGraph tree = new SemanticGraph();
     for (String line : conll.split("\n")) {
-      if (line.trim().equals("")) { continue; }
+      if (line.trim().isEmpty()) { continue; }
       String[] fields = line.trim().split("\\s+");
       int index = Integer.parseInt(fields[0]);
       String word = fields[1];
@@ -70,7 +70,7 @@ public class RelationTripleSegmenterTest extends TestCase {
     }
     int i = 0;
     for (String line : conll.split("\n")) {
-      if (line.trim().equals("")) { continue; }
+      if (line.trim().isEmpty()) { continue; }
       String[] fields = line.trim().split("\\s+");
       int parent = Integer.parseInt(fields[2]);
       String reln = fields[3];
@@ -94,7 +94,7 @@ public class RelationTripleSegmenterTest extends TestCase {
    *   word_index  word  parent_index  incoming_relation
    * </pre>
    */
-  protected Optional<RelationTriple> mkExtraction(String conll, int listIndex, boolean allNominals) {
+  private static Optional<RelationTriple> mkExtraction(String conll, int listIndex, boolean allNominals) {
     Pair<SemanticGraph, List<CoreLabel>> info = mkTree(conll);
     SemanticGraph tree = info.first;
     List<CoreLabel> sentence = info.second;
@@ -110,7 +110,7 @@ public class RelationTripleSegmenterTest extends TestCase {
     return Optional.empty();
   }
 
-  protected RelationTriple blueCatsPlayWithYarnNoIndices() {
+  private static RelationTriple blueCatsPlayWithYarnNoIndices() {
     List<CoreLabel> sentence = new ArrayList<>();
     sentence.add(IETestUtils.mkWord("blue", -1));
     sentence.add(IETestUtils.mkWord("cats", -1));
@@ -120,7 +120,7 @@ public class RelationTripleSegmenterTest extends TestCase {
     return new RelationTriple(sentence.subList(0, 2), sentence.subList(2, 4), sentence.subList(4, 5));
   }
 
-  protected RelationTriple blueCatsPlayWithYarn() {
+  private static RelationTriple blueCatsPlayWithYarn() {
     List<CoreLabel> sentence = new ArrayList<>();
     sentence.add(IETestUtils.mkWord("blue", 0));
     sentence.add(IETestUtils.mkWord("cats", 1));
@@ -130,7 +130,7 @@ public class RelationTripleSegmenterTest extends TestCase {
     return new RelationTriple(sentence.subList(0, 2), sentence.subList(2, 4), sentence.subList(4, 5));
   }
 
-  protected RelationTriple yarnBlueCatsPlayWith() {
+  private static RelationTriple yarnBlueCatsPlayWith() {
     List<CoreLabel> sentence = new ArrayList<>();
     sentence.add(IETestUtils.mkWord("yarn", 0));
     sentence.add(IETestUtils.mkWord("blue", 1));
@@ -190,7 +190,7 @@ public class RelationTripleSegmenterTest extends TestCase {
         "2\tcats\t3\tnsubj\n" +
         "3\tplay\t0\troot\n" +
         "4\twith\t5\tcase\n" +
-        "5\tyarn\t3\tnmod:with\n"
+        "5\tyarn\t3\tobl:with\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
     assertEquals("1.0\tblue cats\tplay with\tyarn", extraction.get().toString());
@@ -203,7 +203,7 @@ public class RelationTripleSegmenterTest extends TestCase {
             "3\tplay\t0\troot\n" +
             "4\tquietly\t3\tadvmod\n" +
             "5\twith\t6\tcase\n" +
-            "6\tyarn\t3\tnmod:with\n"
+            "6\tyarn\t3\tobl:with\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
     assertEquals("1.0\tblue cats\tplay quietly with\tyarn", extraction.get().toString());
@@ -213,7 +213,7 @@ public class RelationTripleSegmenterTest extends TestCase {
     Optional<RelationTriple> extraction = mkExtraction(
             "1\tcats\t2\tnsubj\n" +
             "2\thave\t0\troot\n" +
-            "3\ttails\t2\tdobj\n"
+            "3\ttails\t2\tobj\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
     assertEquals("1.0\tcats\thave\ttails", extraction.get().toString());
@@ -223,7 +223,7 @@ public class RelationTripleSegmenterTest extends TestCase {
     Optional<RelationTriple> extraction = mkExtraction(
         "1\trabbits\t2\tnsubj\n" +
         "2\teat\t0\troot\n" +
-        "3\tvegetables\t2\tdobj\n"
+        "3\tvegetables\t2\tobj\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
     assertEquals("1.0\trabbits\teat\tvegetables", extraction.get().toString());
@@ -233,7 +233,7 @@ public class RelationTripleSegmenterTest extends TestCase {
     Optional<RelationTriple> extraction = mkExtraction(
             "1\tfish\t2\tnsubj\n" +
             "2\tlike\t0\troot\n" +
-            "3\tto\t4\taux\n" +
+            "3\tto\t4\tmark\n" +
             "4\tswim\t2\txcomp\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
@@ -257,7 +257,7 @@ public class RelationTripleSegmenterTest extends TestCase {
         "2\tcats\t3\tnsubj\n" +
         "3\tplay\t0\troot\n" +
         "4\twith\t5\tcase\n" +
-        "5\tyarn\t3\tnmod:with\n"
+        "5\tyarn\t3\tobl:with\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
     assertEquals("1.0\tmy cats\tplay with\tyarn", extraction.get().toString());
@@ -306,11 +306,11 @@ public class RelationTripleSegmenterTest extends TestCase {
 
   public void testHeWasInaugurated() {
     Optional<RelationTriple> extraction = mkExtraction(
-            "1\the\t3\tnsubjpass\n" +
-            "2\twas\t3\tauxpass\n" +
+            "1\the\t3\tnsubj:pass\n" +
+            "2\twas\t3\taux:pass\n" +
             "3\tinaugurated\t0\troot\n" +
             "4\tas\t5\tcase\n" +
-            "5\tpresident\t3\tnmod:as\n"
+            "5\tpresident\t3\tobl:as\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
     assertEquals("1.0\the\twas inaugurated as\tpresident", extraction.get().toString());
@@ -321,7 +321,7 @@ public class RelationTripleSegmenterTest extends TestCase {
             "1\the\t2\tnsubj\n" +
             "2\tserved\t0\troot\n" +
             "3\tas\t4\tcase\n" +
-            "4\tpresident\t2\tnmod:as\n" +
+            "4\tpresident\t2\tobl:as\n" +
             "5\tof\t8\tcase\n" +
             "6\tHarvard\t8\tcompound\n" +
             "7\tLaw\t8\tcompound\n" +
@@ -346,8 +346,8 @@ public class RelationTripleSegmenterTest extends TestCase {
 
   public void testXComp() {
     Optional<RelationTriple> extraction = mkExtraction(
-        "1\tObama\t3\tnsubjpass\n" +
-        "2\twas\t3\tauxpass\n" +
+        "1\tObama\t3\tnsubj:pass\n" +
+        "2\twas\t3\taux:pass\n" +
         "3\tnamed\t0\troot\n" +
         "4\t2009\t8\tnummod\n" +
         "5\tNobel\t8\tcompound\n" +
@@ -361,20 +361,20 @@ public class RelationTripleSegmenterTest extends TestCase {
 
   public void testPassiveNSubj() {
     Optional<RelationTriple> extraction = mkExtraction(
-        "1\tHRE\t3\tnsubjpass\n" +
-        "2\twas\t3\tauxpass\n" +
+        "1\tHRE\t3\tnsubj:pass\n" +
+        "2\twas\t3\taux:pass\n" +
         "3\tfounded\t0\troot\n" +
         "4\tin\t5\tcase\n" +
-        "5\t1991\t3\tnmod:in\n"
+        "5\t1991\t3\tobl:in\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
     assertEquals("1.0\tHRE\twas founded in\t1991", extraction.get().toString());
 
     extraction = mkExtraction(
         "1\tfounded\t0\troot\n" +
-        "2\tHRE\t1\tnsubjpass\n" +
+        "2\tHRE\t1\tnsubj:pass\n" +
         "3\tin\t4\tcase\n" +
-        "4\t2003\t1\tnmod:in\n"
+        "4\t2003\t1\tobl:in\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
     assertEquals("1.0\tHRE\tfounded in\t2003", extraction.get().toString());
@@ -419,7 +419,7 @@ public class RelationTripleSegmenterTest extends TestCase {
         "1\tNewspaper\t2\tnsubj\n" +
         "2\tpublished\t0\troot\n" +
         "3\tin\t4\tcase\n" +
-        "4\tTucson\t2\tnmod:in\n" +
+        "4\tTucson\t2\tobl:in\n" +
         "5\tArizona\t4\tappos\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
@@ -440,7 +440,7 @@ public class RelationTripleSegmenterTest extends TestCase {
   public void testReflexive() {
     Optional<RelationTriple> extraction = mkExtraction(
         "1\tTom\t5\tnsubj\n" +
-        "2\tand\t1\tcc\n" +
+        "2\tand\t3\tcc\n" +
         "3\tJerry\t1\tconj:and\n" +
         "4\twere\t5\taux\n" +
         "5\tfighting\t0\troot\n"
@@ -450,11 +450,13 @@ public class RelationTripleSegmenterTest extends TestCase {
   }
 
   public void testPassiveReflexive() {
+    // same test as testReflexive, but use passive voice
+    // (even if it's not exactly appropriate for this parse)
     Optional<RelationTriple> extraction = mkExtraction(
-        "1\tTom\t5\tnsubjpass\n" +
-        "2\tand\t1\tcc\n" +
+        "1\tTom\t5\tnsubj:pass\n" +
+        "2\tand\t3\tcc\n" +
         "3\tJerry\t1\tconj:and\n" +
-        "4\twere\t5\tauxpass\n" +
+        "4\twere\t5\taux:pass\n" +
         "5\tfighting\t0\troot\n"
     );
     assertTrue("No extraction for sentence!", extraction.isPresent());
@@ -491,7 +493,7 @@ public class RelationTripleSegmenterTest extends TestCase {
         "1\tScania-Vabis\t2\tnsubj\tNNP\tORGANIZATION\n" +
         "2\testablished\t0\troot\tVB\tO\n" +
         "3\tproduction\t4\tcompound\tNN\tO\n" +
-        "4\tplant\t2\tdobj\tNN\tO\n" +
+        "4\tplant\t2\tobj\tNN\tO\n" +
         "5\toutside\t6\tcase\tIN\tO\n" +
         "6\tSödertälje\t2\tnmod:outside\tNN\tO\n"
     );
@@ -502,7 +504,7 @@ public class RelationTripleSegmenterTest extends TestCase {
         "1\tHun\t2\tcompound\tNNP\tPERSON\n" +
         "2\tSen\t3\tnsubj\tNNP\tPERSON\n" +
         "3\tplayed\t0\troot\tVBD\tO\n" +
-        "4\tgolf\t3\tdobj\tNN\tO\n" +
+        "4\tgolf\t3\tobj\tNN\tO\n" +
         "5\twith\t6\tcase\tIN\tO\n" +
         "6\tShinawatra\t3\tnmod:with\tNNP\tPERSON\n"
     );
@@ -513,7 +515,7 @@ public class RelationTripleSegmenterTest extends TestCase {
         "1\tHun\t2\tcompound\tNNP\tPERSON\n" +
         "2\tSen\t3\tnsubj\tNNP\tPERSON\n" +
         "3\tplayed\t0\troot\tVBD\tO\n" +
-        "4\tgolf\t3\tdobj\tNN\tO\n" +
+        "4\tgolf\t3\tobj\tNN\tO\n" +
         "5\tShinawatra\t3\tnmod:with\tNNP\tPERSON\n" +
         "6\tCambodia\t3\tdobj\tNNP\tLOCATION\n"
     );
@@ -614,8 +616,8 @@ public class RelationTripleSegmenterTest extends TestCase {
 
   public void testAdvObjectPassive() {
     Optional<RelationTriple> extraction = mkExtraction(
-        "1\tthings\t3\tnsubjpass\n" +
-        "2\tare\t3\tauxpass\n" +
+        "1\tthings\t3\tnsubj:pass\n" +
+        "2\tare\t3\taux:pass\n" +
         "3\tarranged\t0\troot\n" +
         "4\tneatly\t3\tadvmod\n"
     );
@@ -652,7 +654,7 @@ public class RelationTripleSegmenterTest extends TestCase {
         "1\tObama\t6\tnsubj\n" +
         "2\tis\t6\tcop\n" +
         "3\t44th\t6\tamod\n" +
-        "4\tand\t3\tcc\n" +
+        "4\tand\t5\tcc\n" +
         "5\tcurrent\t3\tconj:and\n" +
         "6\tpresident\t0\troot\n" +
         "7\tof\t8\tcase\n" +
@@ -929,7 +931,7 @@ public class RelationTripleSegmenterTest extends TestCase {
         "1\tFriday\t3\tnmod:tmod\tNN\n" +
         "2\tI\t3\tnsubj\tPR\n" +
         "3\tmake\t0\troot\tVB\n" +
-        "4\ttea\t3\tdobj\tNN\n";
+        "4\ttea\t3\tobj\tNN\n";
     // Positive case
     Optional<RelationTriple> extraction = mkExtraction(conll, true);
     assertTrue("No extraction for sentence!", extraction.isPresent());

@@ -535,7 +535,7 @@ public class TransducerGraph implements Cloneable  {
         }
         // divide each by total
         for (Arc a : myArcs) {
-          a.setOutput(new Double(Math.log(((Double) a.getOutput()).doubleValue() / total)));
+          a.setOutput(Double.valueOf(Math.log(((Double) a.getOutput()).doubleValue() / total)));
         }
       }
       return g;
@@ -695,7 +695,7 @@ public class TransducerGraph implements Cloneable  {
    * for testing only. doubles combined by addition.
    */
   public List sampleUniformPathFromGraph() {
-    List list = new ArrayList();
+    List<Object> list = new ArrayList<>();
     Object node = this.getStartNode();
     Set endNodes = this.getEndNodes();
     while (!endNodes.contains(node)) {
@@ -711,7 +711,7 @@ public class TransducerGraph implements Cloneable  {
     Map<List, Double> result = Generics.newHashMap();
     for (int i = 0; i < numPaths; i++) {
       List l = sampleUniformPathFromGraph();
-      result.put(l, new Double(getOutputOfPathInGraph(l)));
+      result.put(l, Double.valueOf(getOutputOfPathInGraph(l)));
     }
     return result;
   }
@@ -737,10 +737,10 @@ public class TransducerGraph implements Cloneable  {
   /**
    * For testing only.
    */
-  public List<Double> getPathOutputs(List<List> pathList) {
+  public List<Double> getPathOutputs(List<List<String>> pathList) {
     List<Double> outputList = new ArrayList<>();
-    for (List path : pathList) {
-      outputList.add(new Double(getOutputOfPathInGraph(path)));
+    for (List<String> path : pathList) {
+      outputList.add(Double.valueOf(getOutputOfPathInGraph(path)));
     }
     return outputList;
   }
@@ -810,7 +810,7 @@ public class TransducerGraph implements Cloneable  {
       Arc a = graph.getArcBySourceAndInput(source, input);
       if (a != null) {
         // increment the arc weight
-        a.output = new Double(((Double) a.output).doubleValue() + count);
+        a.output = Double.valueOf(((Double) a.output).doubleValue() + count);
       } else {
         Object target;
         if (input.equals(TransducerGraph.EPSILON_INPUT)) {
@@ -825,7 +825,7 @@ public class TransducerGraph implements Cloneable  {
           // the state is described by the full history
           target = path.subList(0, j + 1);
         }
-        Double output = new Double(count);
+        Double output = Double.valueOf(count);
         a = new Arc(source, target, input, output);
         graph.addArc(a);
       }
@@ -839,12 +839,12 @@ public class TransducerGraph implements Cloneable  {
    * // generate a bunch of paths through the graph with the input alphabet
    * // and create new nodes for each one.
    */
-  public static TransducerGraph createRandomGraph(int numPaths, int pathLengthMean, double pathLengthVariance, int numInputs, List pathList) {
+  public static TransducerGraph createRandomGraph(int numPaths, int pathLengthMean, double pathLengthVariance, int numInputs, List<List<String>> pathList) {
     // compute the path length. Draw from a normal distribution
     int pathLength = (int) (r.nextGaussian() * pathLengthVariance + pathLengthMean);
     for (int i = 0; i < numPaths; i++) {
       // make a path
-      List path = new ArrayList();
+      List<String> path = new ArrayList();
       for (int j = 0; j < pathLength; j++) {
         String input = Integer.toString(r.nextInt(numInputs));
         path.add(input);

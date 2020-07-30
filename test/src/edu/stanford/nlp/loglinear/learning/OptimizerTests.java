@@ -15,24 +15,27 @@ import java.util.Random;
 import static org.junit.Assert.*;
 
 /**
+ * This does its best to quick check our optimizers. The strategy here is to generate convex functions that are solvable
+ * in closed form, and then test that our optimizer is able to achieve a nearly optimal solution at convergence.
+ * <p>
  * Created on 8/26/15.
  * @author keenon
- * <p>
- * This does its best to Quickcheck our optimizers. The strategy here is to generate convex functions that are solvable
- * in closed form, and then test that our optimizer is able to achieve a nearly optimal solution at convergence.
  */
 @RunWith(Theories.class)
 public class OptimizerTests {
+
+  @SuppressWarnings("unused") // This is somehow used in the theories stuff, though I don't quite understand...
   @DataPoint
   public static AbstractBatchOptimizer backtrackingAdaGrad = new BacktrackingAdaGradOptimizer();
 
+  @SuppressWarnings("DefaultAnnotationParam")
   @Theory
   public void testOptimizeLogLikelihood(AbstractBatchOptimizer optimizer,
                                         @ForAll(sampleSize = 5) @From(LogLikelihoodFunctionTest.GraphicalModelDatasetGenerator.class) GraphicalModel[] dataset,
                                         @ForAll(sampleSize = 2) @From(LogLikelihoodFunctionTest.WeightsGenerator.class) ConcatVector initialWeights,
-                                        @ForAll(sampleSize = 2) @InRange(minDouble = 0.0, maxDouble = 5.0) double l2regularization) throws Exception {
+                                        @ForAll(sampleSize = 2) @InRange(minDouble = 0.0, maxDouble = 5.0) double l2regularization) {
     AbstractDifferentiableFunction<GraphicalModel> ll = new LogLikelihoodDifferentiableFunction();
-    ConcatVector finalWeights = optimizer.optimize(dataset, ll, initialWeights, l2regularization, 1.0e-9, true);
+    ConcatVector finalWeights = optimizer.optimize(dataset, ll, initialWeights, l2regularization, 1.0e-6, true);
     System.err.println("Finished optimizing");
 
     double logLikelihood = getValueSum(dataset, finalWeights, ll, l2regularization);
@@ -59,12 +62,13 @@ public class OptimizerTests {
       // Check that we're within a very small margin of error (around 3 decimal places) of the randomly
       // discovered value
 
-      if (logLikelihood < randomPerturbedLogLikelihood - (1.0e-3 * Math.max(1.0, Math.abs(logLikelihood)))) {
+      double allowedDeviation = randomPerturbedLogLikelihood - (1.0e-3 * Math.max(1.0, Math.abs(logLikelihood)));
+      if (logLikelihood < allowedDeviation) {
         System.err.println("Thought optimal point was: " + logLikelihood);
         System.err.println("Discovered better point: " + randomPerturbedLogLikelihood);
       }
 
-      assertTrue(logLikelihood >= randomPerturbedLogLikelihood - (1.0e-3 * Math.max(1.0, Math.abs(logLikelihood))));
+      assertTrue(logLikelihood >= allowedDeviation);
     }
   }
 
@@ -127,11 +131,12 @@ public class OptimizerTests {
   }
   */
 
-  private <T> double getValueSum(T[] dataset, ConcatVector weights, AbstractDifferentiableFunction<T> fn, double l2regularization) {
+  private static <T> double getValueSum(T[] dataset, ConcatVector weights, AbstractDifferentiableFunction<T> fn, double l2regularization) {
     double value = 0.0;
     for (T t : dataset) {
       value += fn.getSummaryForInstance(t, weights, new ConcatVector(0));
     }
     return (value / dataset.length) - (weights.dotProduct(weights) * l2regularization);
   }
+
 }

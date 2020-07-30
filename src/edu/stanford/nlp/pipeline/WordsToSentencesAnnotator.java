@@ -6,6 +6,7 @@ import edu.stanford.nlp.ling.CoreAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.ling.tokensregex.TokenSequencePattern;
+import edu.stanford.nlp.process.AbstractTokenizer;
 import edu.stanford.nlp.process.PTBTokenizer;
 import edu.stanford.nlp.process.WordToSentenceProcessor;
 import edu.stanford.nlp.util.ArraySet;
@@ -40,14 +41,14 @@ public class WordsToSentencesAnnotator implements Annotator  {
 
 
   public WordsToSentencesAnnotator(Properties properties) {
-    boolean nlSplitting = Boolean.valueOf(properties.getProperty(StanfordCoreNLP.NEWLINE_SPLITTER_PROPERTY, "false"));
+    boolean nlSplitting = Boolean.parseBoolean(properties.getProperty(StanfordCoreNLP.NEWLINE_SPLITTER_PROPERTY, "false"));
     if (nlSplitting) {
-      boolean whitespaceTokenization = Boolean.valueOf(properties.getProperty("tokenize.whitespace", "false"));
+      boolean whitespaceTokenization = Boolean.parseBoolean(properties.getProperty("tokenize.whitespace", "false"));
       if (whitespaceTokenization) {
         if (System.lineSeparator().equals("\n")) {
           // this constructor will keep empty lines as empty sentences
           WordToSentenceProcessor<CoreLabel> wts1 =
-                  new WordToSentenceProcessor<>(ArrayUtils.asImmutableSet(new String[]{"\n"}));
+                  new WordToSentenceProcessor<>(ArrayUtils.asImmutableSet(new String[]{"\n", AbstractTokenizer.NEWLINE_TOKEN}));
           this.countLineNumbers = true;
           this.wts = wts1;
         } else {
@@ -55,7 +56,8 @@ public class WordsToSentencesAnnotator implements Annotator  {
           // the system separator
           // this constructor will keep empty lines as empty sentences
           WordToSentenceProcessor<CoreLabel> wts1 =
-                  new WordToSentenceProcessor<>(ArrayUtils.asImmutableSet(new String[]{System.lineSeparator(), "\n"}));
+                  new WordToSentenceProcessor<>(ArrayUtils.asImmutableSet(new String[]{System.lineSeparator(), "\n",
+                      AbstractTokenizer.NEWLINE_TOKEN}));
           this.countLineNumbers = true;
           this.wts = wts1;
         }
@@ -115,7 +117,7 @@ public class WordsToSentencesAnnotator implements Annotator  {
             (boundaryMultiTokenRegex != null) ? TokenSequencePattern.compile(boundaryMultiTokenRegex) : null, tokenRegexesToDiscard);
       }
     }
-    VERBOSE = Boolean.valueOf(properties.getProperty("ssplit.verbose", "false"));
+    VERBOSE = Boolean.parseBoolean(properties.getProperty("ssplit.verbose", "false"));
   }
 
   public WordsToSentencesAnnotator(boolean verbose) {
@@ -310,7 +312,7 @@ public class WordsToSentencesAnnotator implements Annotator  {
     // at end of this annotator, it should be as though newline tokens
     // were never used
     // reset token indexes
-    List<CoreLabel> finalTokens = new ArrayList<CoreLabel>();
+    List<CoreLabel> finalTokens = new ArrayList<>();
     int tokenIndex = 0;
     CoreLabel prevToken = null;
     for (CoreLabel currToken : annotation.get(CoreAnnotations.TokensAnnotation.class)) {
@@ -320,17 +322,16 @@ public class WordsToSentencesAnnotator implements Annotator  {
         currToken.set(CoreAnnotations.TokenEndAnnotation.class, tokenIndex + 1);
         tokenIndex++;
         // fix before text for this token
-        if (prevToken != null && prevToken.isNewline()) {
-          String currTokenBeforeText = currToken.get(CoreAnnotations.BeforeAnnotation.class);
-          String prevTokenText = prevToken.get(CoreAnnotations.OriginalTextAnnotation.class);
-          currToken.set(CoreAnnotations.BeforeAnnotation.class, prevTokenText+currTokenBeforeText);
+        if (prevToken != null && prevToken.isNewline() &&
+            currToken.get(CoreAnnotations.BeforeAnnotation.class) != null) {
+          String prevNewlineTokenText = prevToken.get(CoreAnnotations.OriginalTextAnnotation.class);
+          currToken.set(CoreAnnotations.BeforeAnnotation.class, prevNewlineTokenText);
         }
       } else {
         String newlineText = currToken.get(CoreAnnotations.OriginalTextAnnotation.class);
         // fix after text for last token
-        if (prevToken != null) {
-          String prevTokenAfterText = prevToken.get(CoreAnnotations.AfterAnnotation.class);
-          prevToken.set(CoreAnnotations.AfterAnnotation.class, prevTokenAfterText + newlineText);
+        if (prevToken != null && prevToken.get(CoreAnnotations.AfterAnnotation.class) != null) {
+          prevToken.set(CoreAnnotations.AfterAnnotation.class, newlineText);
         }
       }
       prevToken = currToken;
@@ -356,6 +357,7 @@ public class WordsToSentencesAnnotator implements Annotator  {
     return Collections.unmodifiableSet(new ArraySet<>(Arrays.asList(
         CoreAnnotations.TextAnnotation.class,
         CoreAnnotations.TokensAnnotation.class,
+        CoreAnnotations.ValueAnnotation.class,
         CoreAnnotations.CharacterOffsetBeginAnnotation.class,
         CoreAnnotations.CharacterOffsetEndAnnotation.class,
         CoreAnnotations.IsNewlineAnnotation.class,

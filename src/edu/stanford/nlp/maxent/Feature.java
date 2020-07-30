@@ -1,4 +1,4 @@
-/**
+/*
  * Title:        StanfordMaxEnt<p>
  * Description:  A Maximum Entropy Toolkit<p>
  * Copyright:    Copyright (c) Trustees of Leland Stanford Junior University<p>
@@ -7,12 +7,12 @@
 
 package edu.stanford.nlp.maxent;
 
+import java.io.PrintStream;
+import java.util.Map;
+
 import edu.stanford.nlp.util.Generics;
 import edu.stanford.nlp.util.Index;
 import edu.stanford.nlp.util.IntPair;
-
-import java.io.PrintStream;
-import java.util.Map;
 
 
 /**
@@ -65,13 +65,16 @@ public class Feature {
         }
       }//if
     }// for
-    Integer[] keys = setNonZeros.keySet().toArray(new Integer[setNonZeros.keySet().size()]);
-    indexedValues = new int[keys.length];
-    valuesI = new double[keys.length];
-    for (int j = 0; j < keys.length; j++) {
-      indexedValues[j] = keys[j].intValue();
-      valuesI[j] = setNonZeros.get(keys[j]).doubleValue();
-    } // for
+    
+    indexedValues = new int[setNonZeros.size()];
+    valuesI = new double[indexedValues.length];
+    
+    int i = 0;
+    for (Map.Entry<Integer, Double> entry: setNonZeros.entrySet()) {
+      indexedValues[i] = entry.getKey();
+      valuesI[i] = entry.getValue();
+      i++;
+    }
     domain = e;
   }
 
@@ -85,12 +88,12 @@ public class Feature {
     return instanceIndex.get(index);
   }
 
-  int getXInstance(int index) {
+  private int getXInstance(int index) {
     IntPair iP = getPair(index);
     return iP.get(0);
   }
 
-  int getYInstance(int index) {
+  private int getYInstance(int index) {
     IntPair iP = getPair(index);
     return iP.get(1);
   }
@@ -237,7 +240,7 @@ public class Feature {
     for (int i = 0; i < len(); i++) {
       int x = getX(i);
       int y = getY(i);
-      Double value = new Double(getVal(i));
+      Double value = Double.valueOf(getVal(i));
       this.hashValues.put(Integer.valueOf(indexOf(x, y)), value);
     }
   }

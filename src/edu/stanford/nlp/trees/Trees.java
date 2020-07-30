@@ -11,7 +11,7 @@ import java.util.*;
 import java.io.*;
 
 /**
- * Various static utilities for the <code>Tree</code> class.
+ * Various static utilities for the {@code Tree} class.
  *
  * @author Roger Levy
  * @author Dan Klein
@@ -23,7 +23,20 @@ public class Trees {
 
   private Trees() {}
 
-
+  /**
+   * Recursively calculate the max height of the given tree
+   */
+  public static int height(Tree t) {
+    if (t.isLeaf()) {
+      return 1;
+    }
+    int maxHeight = 0;
+    for (Tree child : t.children()) {
+      maxHeight = Math.max(maxHeight, height(child));
+    }
+    return maxHeight + 1;
+  }
+  
   /**
    * Returns the positional index of the left edge of a tree <i>t</i>
    * within a given root, as defined by the size of the yield of all
@@ -56,7 +69,7 @@ public class Trees {
     }
   }
 
-  static boolean leftEdge(Tree t, Tree t1, MutableInteger i) {
+  private static boolean leftEdge(Tree t, Tree t1, MutableInteger i) {
     if (t == t1) {
       return true;
     } else if (t1.isLeaf()) {
@@ -107,7 +120,7 @@ public class Trees {
     }
   }
 
-  static boolean rightEdge(Tree t, Tree t1, MutableInteger i) {
+  private static boolean rightEdge(Tree t, Tree t1, MutableInteger i) {
     if (t == t1) {
       return true;
     } else if (t1.isLeaf()) {
@@ -258,8 +271,8 @@ public class Trees {
 
 
   /**
-   * returns the maximal projection of <code>head</code> in
-   * <code>root</code> given a {@link HeadFinder}
+   * returns the maximal projection of {@code head} in
+   * {@code root} given a {@link HeadFinder}
    */
   public static Tree maximalProjection(Tree head, Tree root, HeadFinder hf) {
     Tree projection = head;
@@ -303,13 +316,13 @@ public class Trees {
   }
 
   /**
-   * gets the <code>n</code>th terminal in <code>tree</code>.  The first terminal is number zero.
+   * gets the {@code n}th terminal in {@code tree}.  The first terminal is number zero.
    */
   public static Tree getTerminal(Tree tree, int n) {
     return getTerminal(tree, new MutableInteger(0), n);
   }
 
-  static Tree getTerminal(Tree tree, MutableInteger i, int n) {
+  private static Tree getTerminal(Tree tree, MutableInteger i, int n) {
     if (i.intValue() == n) {
       if (tree.isLeaf()) {
         return tree;
@@ -333,13 +346,13 @@ public class Trees {
   }
 
   /**
-   * gets the <code>n</code>th preterminal in <code>tree</code>.  The first terminal is number zero.
+   * gets the {@code n}th preterminal in {@code tree}.  The first terminal is number zero.
    */
   public static Tree getPreTerminal(Tree tree, int n) {
     return getPreTerminal(tree, new MutableInteger(0), n);
   }
 
-  static Tree getPreTerminal(Tree tree, MutableInteger i, int n) {
+  private static Tree getPreTerminal(Tree tree, MutableInteger i, int n) {
     if (i.intValue() == n) {
       if (tree.isPreTerminal()) {
         return tree;
@@ -375,8 +388,8 @@ public class Trees {
   }
 
   /**
-   * Returns the index of <code>daughter</code> in <code>parent</code> by ==.
-   * Returns -1 if <code>daughter</code> not found.
+   * Returns the index of {@code daughter} in {@code parent} by ==.
+   * Returns -1 if {@code daughter} not found.
    */
   public static int objectEqualityIndexOf(Tree parent, Tree daughter) {
     for (int i = 0; i < parent.children().length; i++) {
@@ -577,7 +590,7 @@ public class Trees {
     return treeToLatex(t);
   }
 
-  static String escape(String s) {
+  private static String escape(String s) {
     StringBuilder sb = new StringBuilder();
     for (int i=0; i<s.length(); i++) {
       char c = s.charAt(i);
@@ -628,7 +641,7 @@ public class Trees {
    * Gets the <i>i</i>th leaf of a tree from the left.
    * The leftmost leaf is numbered 0.
    *
-   * @return The <i>i</i><sup>th</sup> leaf as a Tree, or <code>null</code>
+   * @return The <i>i</i><sup>th</sup> leaf as a Tree, or {@code null}
    *     if there is no such leaf.
    */
   public static Tree getLeaf(Tree tree, int i) {
@@ -823,7 +836,7 @@ public class Trees {
     outputTreeLabels(tree, 0);
   }
 
-  public static void outputTreeLabels(Tree tree, int depth) {
+  private static void outputTreeLabels(Tree tree, int depth) {
     for (int i = 0; i < depth; ++i) {
       System.out.print(" ");
     }
@@ -836,7 +849,7 @@ public class Trees {
   /**
    * Converts the tree labels to CoreLabels.
    * We need this because we store additional info in the CoreLabel, like token span.
-   * @param tree
+   * @param tree Any tree
    */
   public static void convertToCoreLabels(Tree tree) {
     Label l = tree.label();

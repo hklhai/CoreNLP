@@ -55,10 +55,7 @@ import edu.stanford.nlp.util.logging.Redwood;
 
 import java.io.*;
 import java.util.*;
-import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -210,36 +207,6 @@ public class LexicalizedParser extends ParserGrammar implements Serializable  {
     }
   }
 
-  public static LexicalizedParser loadModelFromZip(String zipFilename,
-                                                   String modelName) {
-    LexicalizedParser parser = null;
-    try {
-      File file = new File(zipFilename);
-      if (file.exists()) {
-        ZipFile zin = new ZipFile(file);
-        ZipEntry zentry = zin.getEntry(modelName);
-        if (zentry != null) {
-          InputStream in = zin.getInputStream(zentry);
-          // gunzip it if necessary
-          if (modelName.endsWith(".gz")) {
-            in = new GZIPInputStream(in);
-          }
-          ObjectInputStream ois = new ObjectInputStream(in);
-          parser = loadModel(ois);
-          ois.close();
-          in.close();
-        }
-        zin.close();
-      } else {
-        throw new FileNotFoundException("Could not find " + modelName +
-                                        " inside " + zipFilename);
-      }
-    } catch (IOException e) {
-      throw new RuntimeIOException(e);
-    }
-    return parser;
-  }
-
   public static LexicalizedParser copyLexicalizedParser(LexicalizedParser parser) {
     return new LexicalizedParser(parser.lex, parser.bg, parser.ug, parser.dg, parser.stateIndex, parser.wordIndex, parser.tagIndex, parser.op);
   }
@@ -295,6 +262,7 @@ public class LexicalizedParser extends ParserGrammar implements Serializable  {
    * Parses the list of HasWord.  If the parse fails for some reason,
    * an X tree is returned instead of barfing.
    */
+  @Override
   public Tree parse(List<? extends HasWord> lst) {
     try {
       ParserQuery pq = parserQuery();
@@ -362,6 +330,7 @@ public class LexicalizedParser extends ParserGrammar implements Serializable  {
   /**
    * Similar to parse(), but instead of returning an X tree on failure, returns null.
    */
+  @Override
   public Tree parseTree(List<? extends HasWord> sentence) {
     ParserQuery pq = parserQuery();
     if (pq.parse(sentence)) {
@@ -786,9 +755,9 @@ public class LexicalizedParser extends ParserGrammar implements Serializable  {
   /**
    * A method for training from two different treebanks, the second of which is presumed
    * to be orders of magnitude larger.
-   * <p/>
+   * <br>
    * Trees are not read into memory but processed as they are read from disk.
-   * <p/>
+   * <br>
    * A weight (typically &lt;= 1) can be put on the second treebank.
    *
    * @param trainTreebank A treebank to train from
@@ -969,7 +938,7 @@ public class LexicalizedParser extends ParserGrammar implements Serializable  {
    * passed in should
    * be specified like command-line arguments, including with an initial
    * minus sign.
-   * <p/>
+   * <br>
    * <i>Notes:</i> This can be used to set parsing-time flags for a
    * serialized parser.  You can also still change things serialized
    * in Options, but this will probably degrade parsing performance.
@@ -1089,7 +1058,7 @@ public class LexicalizedParser extends ParserGrammar implements Serializable  {
    * <li>{@code -tokenizerOptions options} Specifies options to a
    * TokenizerFactory class to be used for tokenization.   A comma-separated
    * list. For PTBTokenizer, options of interest include
-   * {@code americanize=false} and {@code asciiQuotes} (for German).
+   * {@code americanize=false} and {@code quotes=ascii} (for German).
    * Note that any choice of tokenizer options that conflicts with the
    * tokenization used in the parser training data will likely degrade parser
    * performance. </li>
@@ -1218,7 +1187,8 @@ public class LexicalizedParser extends ParserGrammar implements Serializable  {
     List<String> optionArgs = new ArrayList<>();
     String encoding = null;
     // while loop through option arguments
-    while (argIndex < args.length && args[argIndex].charAt(0) == '-') {
+    while (argIndex < args.length && args[argIndex].charAt(0) == '-' &&
+           !args[argIndex].equals("-")) { // single - represents parse from stdin
       if (args[argIndex].equalsIgnoreCase("-train") ||
           args[argIndex].equalsIgnoreCase("-trainTreebank")) {
         train = true;
@@ -1235,11 +1205,14 @@ public class LexicalizedParser extends ParserGrammar implements Serializable  {
         secondaryTreebankWeight = treebankDescription.third();
       } else if (args[argIndex].equalsIgnoreCase("-tLPP") && (argIndex + 1 < args.length)) {
         try {
-          op.tlpParams = (TreebankLangParserParams) Class.forName(args[argIndex + 1]).newInstance();
+          op.tlpParams = (TreebankLangParserParams) Class.forName(args[argIndex + 1]).getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException e) {
           log.info("Class not found: " + args[argIndex + 1]);
           throw new RuntimeException(e);
-        } catch (InstantiationException e) {
+        } catch (NoSuchMethodException e) {
+          log.info("Method not found: " + args[argIndex + 1]);
+          throw new RuntimeException(e);
+        } catch (InstantiationException|InvocationTargetException e) {
           log.info("Couldn't instantiate: " + args[argIndex + 1] + ": " + e.toString());
           throw new RuntimeException(e);
         } catch (IllegalAccessException e) {

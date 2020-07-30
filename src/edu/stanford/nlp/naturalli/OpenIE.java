@@ -72,7 +72,7 @@ public class OpenIE implements Annotator  {
   /**
    * A pattern for rewriting "NN_1 is a JJ NN_2" --> NN_1 is JJ"
    */
-  private static final SemgrexPattern adjectivePattern = SemgrexPattern.compile("{}=obj >nsubj {}=subj >cop {}=be >det {word:/an?/} >amod {}=adj ?>/prep_.*/=prep {}=pobj");
+  private static final SemgrexPattern adjectivePattern = SemgrexPattern.compile("{}=obj >nsubj {}=subj >cop {}=be >det {word:/an?/} >amod {}=adj ?>/(nmod|acl).*/=prep {}=pobj");
 
   //
   // Static Options (for running standalone)
@@ -432,10 +432,21 @@ public class OpenIE implements Annotator  {
   }
 
   /**
-   *   Annotate a single sentence.
+   * Annotate a single sentence.
    *
-   *   This annotator will, in particular, set the {@link edu.stanford.nlp.naturalli.NaturalLogicAnnotations.EntailedSentencesAnnotation}
-   *   and {@link edu.stanford.nlp.naturalli.NaturalLogicAnnotations.RelationTriplesAnnotation} annotations.
+   * This annotator will, in particular, set the 
+   * {@link edu.stanford.nlp.naturalli.NaturalLogicAnnotations.EntailedSentencesAnnotation}
+   * and 
+   * {@link edu.stanford.nlp.naturalli.NaturalLogicAnnotations.RelationTriplesAnnotation}
+   * annotations.
+   * <br>
+   * The annotations happen as follows:
+   * <br>
+   * First, we break a sentence into its candidate clauses.  That can mean elimination of 
+   *   conjugations or other similar phrases to make shorter sentences which are hopefully
+   *   still valid text.<br>
+   * We then split off shorter fragments from each of the clauses.<br>
+   * Then, the RelationTripleSegmenter analyzes each fragment to see if it is a valid triple.
    */
   @SuppressWarnings("unchecked")
   public void annotateSentence(CoreMap sentence, Map<CoreLabel, List<CoreLabel>> canonicalMentionMap) {
@@ -701,7 +712,7 @@ public class OpenIE implements Annotator  {
       if (!"false".equalsIgnoreCase(props.getProperty("resolve_coref", props.getProperty("openie.resolve_coref", "false")))) {
         props.setProperty("coref.md.type", "dep");  // so we don't need the `parse` annotator
         props.setProperty("coref.mode", "statistical");  // explicitly ask for scoref
-        props.setProperty("annotators", "tokenize,ssplit,pos,lemma,depparse,ner,mention,coref,natlog,openie");
+        props.setProperty("annotators", "tokenize,ssplit,pos,lemma,depparse,ner,coref,natlog,openie");
       } else {
         props.setProperty("annotators", "tokenize,ssplit,pos,lemma,depparse,natlog,openie");
       }
@@ -729,7 +740,7 @@ public class OpenIE implements Annotator  {
       System.exit(1);
     }
     // Copy properties that are missing the 'openie' prefix
-    new HashSet<>(props.keySet()).stream().filter(key -> !key.toString().startsWith("openie.")).forEach(key -> props.setProperty("openie." + key.toString(), props.getProperty(key.toString())));
+    new HashMap<>(props).entrySet().stream().filter(entry -> !entry.getKey().toString().startsWith("openie.")).forEach(entry -> props.setProperty("openie." + entry.getKey(), entry.getValue().toString()));
 
     // Create the pipeline
     StanfordCoreNLP pipeline = new StanfordCoreNLP(props);

@@ -45,7 +45,7 @@ public class SentenceAlgorithmsITest {
       add(new Span(10, 12));
       add(new Span(13, 14));
       add(new Span(17, 20));
-    }}, new Sentence("Freezing involves changing water from its liquid state to its solid state (ice) by the removal of heat.").algorithms().keyphraseSpans());
+    }}, new Sentence("Melting involves changing water from its solid state to its liquid state (water) by the addition of heat.").algorithms().keyphraseSpans());
 
     assertEquals(new ArrayList<Span>() {{
       add(new Span(0, 1));
@@ -196,6 +196,10 @@ public class SentenceAlgorithmsITest {
     s.dependencyGraph();
     assertEquals(new ArrayList<String>(){{
       add("forced");
+      add("<-amod-");
+      add("governors");
+      add("<-nsubj-");
+      add("pay");
       add("<-acl:relcl-");
       add("Geledi");
       add("<-nmod:of-");
@@ -204,12 +208,12 @@ public class SentenceAlgorithmsITest {
       add("Sultanate");
       add("<-nmod:including-");
       add("trade");
-      add("<-dobj-");
+      add("<-obj-");
       add("dominated");
-      add("-nmod:in->");
+      add("-obl:in->");
       add("Ages");
       add("-compound->");
       add("Middle");
-    }}, s.algorithms().dependencyPathBetween(72, 2));
+    }}, s.algorithms().dependencyPathBetween(74, 2));
   }
 }

@@ -2,10 +2,8 @@ package edu.stanford.nlp.pipeline;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.util.*;
 
 import edu.stanford.nlp.io.IOUtils;
 import edu.stanford.nlp.ling.CoreAnnotations;
@@ -20,6 +18,7 @@ import edu.stanford.nlp.util.CoreMap;
  * <p>The fields currently output are:</p>
  *
  * <table>
+ * <caption>Output fields</caption>
  *   <tr>
  *     <td>Field Number</td>
  *     <td>Field Name</td>
@@ -86,7 +85,29 @@ public class CoNLLUOutputter extends AnnotationOutputter {
 
   private static final CoNLLUDocumentWriter conllUWriter = new CoNLLUDocumentWriter();
 
-  public CoNLLUOutputter() {}
+  /**
+   * The type of dependencies to print, options:
+   * - basic
+   * - enhanced
+   * - enhancedPlusPlus
+   *
+   * basic is the default
+   */
+  private final SemanticGraphCoreAnnotations.DependenciesType dependenciesType;
+
+  public CoNLLUOutputter() {
+    this(new Properties());
+  }
+
+  public CoNLLUOutputter(String type) {
+    this(new Properties() {{
+           setProperty("output.dependenciesType", type);
+    }});
+  }
+
+  public CoNLLUOutputter(Properties props) {
+    dependenciesType = SemanticGraphCoreAnnotations.DependenciesType.valueOf(props.getProperty("output.dependenciesType", "basic").toUpperCase());
+  }
 
   @Override
   public void print(Annotation doc, OutputStream target, Options options) throws IOException {
@@ -96,7 +117,17 @@ public class CoNLLUOutputter extends AnnotationOutputter {
     for (CoreMap sentence : sentences) {
       SemanticGraph sg = sentence.get(SemanticGraphCoreAnnotations.BasicDependenciesAnnotation.class);
       if (sg != null) {
-        writer.print(conllUWriter.printSemanticGraph(sg));
+        switch (dependenciesType) {
+        case ENHANCED:
+        case ENHANCEDPLUSPLUS:
+          writer.print(conllUWriter.printSemanticGraph(sg, sentence.get(dependenciesType.annotation())));
+          break;
+        case BASIC:
+          writer.print(conllUWriter.printSemanticGraph(sg));
+          break;
+        default:
+          throw new IllegalArgumentException("CoNLLUOutputter: unknown dependencies type " + dependenciesType);
+        }
       } else {
         writer.print(conllUWriter.printPOSAnnotations(sentence));
       }

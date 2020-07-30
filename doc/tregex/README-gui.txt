@@ -1,7 +1,7 @@
-Tregex GUI v3.9.1 - 2018-02-27
+Tregex GUI v4.0.0 - 2020-05-10
 ----------------------------------------------
 
-Copyright (c) 2003-2012 The Board of Trustees of 
+Copyright (c) 2003-2020 The Board of Trustees of 
 The Leland Stanford Junior University. All Rights Reserved.
 
 Original core Tregex code by Roger Levy and Galen Andrew.
@@ -154,6 +154,10 @@ LICENSE
 ----------------------------
 CHANGES
 ----------------------------
+
+2020-05-10    4.0.0     Update for compatibility 
+
+2018-10-16    3.9.2     Update for compatibility 
 
 2018-02-27    3.9.1     Updated for compatibility 
 

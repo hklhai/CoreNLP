@@ -1,21 +1,24 @@
 package edu.stanford.nlp.international.spanish;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.StringReader;
+import java.util.List;
+
+import org.junit.Test;
+
 import edu.stanford.nlp.international.spanish.process.SpanishTokenizer;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.process.Tokenizer;
 import edu.stanford.nlp.process.TokenizerFactory;
-import junit.framework.TestCase;
-
-import java.io.StringReader;
-import java.util.List;
 
 /**
  * Needs to be an "itest" because the VerbStripper loads data from the models jar.
  *
  * @author Ishita Prasad
  */
-public class SpanishTokenizerITest extends TestCase {
+public class SpanishTokenizerITest {
 
   private final String[] spanishInputs = {
       "Esta es una oración.",
@@ -51,6 +54,37 @@ public class SpanishTokenizerITest extends TestCase {
 
   private final String[][] spanishGold = {
       { "Esta", "es", "una", "oración", "." },
+      { "¡", "Dímelo", "!" },
+      { "Hazlo", "." },
+      { "Este", "es", "un", "címbalo", "." },
+      { "Metelo", "." },
+      { "Sentémonos", "." },
+      { "Escribámosela", "." },
+      { "No", "comamos", "allí", "." },
+      { "Comamosla", "." },
+      { "sub-20" },
+      { "un", "teléfono", "(", "902.400.345", ")", "." },
+      { "Port-au-Prince" },
+      { "McLaren", "/", "Mercedes" },
+      { "10/12" },
+      { "4X4" },
+      { "3G" },
+      { "3g" },
+      { "sp3" },
+      { "12", "km" },
+      { "12", "km", "/", "h" },
+      { "Los", "hombres", "sentados", "están", "muy", "guapos", "." },
+      { "Hizo", "abrirlos", "." },
+      { "salos", ")", "(", "1", "de" },
+
+      { "13a" },
+      { "5", "a" },
+      { "1", "a" },
+      { "5", "a", "el" },
+  };
+
+  private final String[][] ancoraSpanishGold = {
+      { "Esta", "es", "una", "oración", "." },
       { "¡", "Di", "me", "lo", "!" },
       { "Haz", "lo", "." },
       { "Este", "es", "un", "címbalo", "." },
@@ -60,7 +94,7 @@ public class SpanishTokenizerITest extends TestCase {
       { "No", "comamos", "allí", "." },
       { "Comamos", "la", "." },
       { "sub-20" },
-      { "un", "teléfono", "=LRB=", "902.400.345", "=RRB=", "." },
+      { "un", "teléfono", "-LRB-", "902.400.345", "-RRB-", "." },
       { "Port", "-", "au", "-", "Prince" },
       { "McLaren", "/", "Mercedes" },
       { "10/12" },
@@ -72,7 +106,7 @@ public class SpanishTokenizerITest extends TestCase {
       { "12", "km", "/", "h" },
       { "Los", "hombres", "sentados", "están", "muy", "guapos", "." },
       { "Hizo", "abrir", "los", "." },
-      { "salos", "=RRB=", "=LRB=", "1", "de" },
+      { "salos", "-RRB-", "-LRB-", "1", "de" },
 
       { "13a" },
       { "5", "a" },
@@ -98,13 +132,14 @@ public class SpanishTokenizerITest extends TestCase {
     }
   }
 
+  @Test
   public void testSpanishTokenizerWord() {
      assert spanishInputs.length == spanishGold.length;
      final TokenizerFactory<CoreLabel> tf = SpanishTokenizer.ancoraFactory();
      tf.setOptions("");
      tf.setOptions("tokenizeNLs");
 
-     runSpanish(tf, spanishInputs, spanishGold);
+     runSpanish(tf, spanishInputs, ancoraSpanishGold);
    }
 
   /** Makes a Spanish tokenizer with the options that CoreNLP uses. Results actually no different.... */
@@ -112,11 +147,12 @@ public class SpanishTokenizerITest extends TestCase {
     assert spanishInputs.length == spanishGold.length;
     final TokenizerFactory<CoreLabel> tf = SpanishTokenizer.coreLabelFactory();
     tf.setOptions("");
-    tf.setOptions("invertible,ptb3Escaping=true,splitAll=true");
+    tf.setOptions("invertible,splitAll=false");
 
     runSpanish(tf, spanishInputs, spanishGold);
   }
 
+  @Test
   public void testOffsetsSpacing() {
     // guide                 1         2         3         4          5         6         7           8         9         0         1         2         3
     // guide       0123456789012345678901234567890123456789012345678 90123456789012345678901234567 8 901234567890123456789012345678901234567890123456789012345
@@ -185,16 +221,19 @@ public class SpanishTokenizerITest extends TestCase {
     }
   }
 
+  @Test
   public void testCliticPronounOffset() {
     // will be tokenized into "tengo que decir te algo"
     testOffset("tengo que decirte algo", new int[]{0, 6, 10, 15, 18}, new int[]{5, 9, 15, 17, 22});
   }
 
+  @Test
   public void testIr() {
     // "ir" is a special case -- it is a verb ending without a stem!
     testOffset("tengo que irme ahora", new int[] {0, 6, 10, 12, 15}, new int[] {5, 9, 12, 14, 20});
   }
 
+  @Test
   public void testContractionOffsets() {
     // y de el y
     testOffsetsTextOriginalText("y del y", new int[] {0, 2, 3, 6}, new int[] {1, 3, 5, 7},
@@ -216,6 +255,7 @@ public class SpanishTokenizerITest extends TestCase {
     );
   }
 
+  @Test
   public void testCompoundOffset() {
     testOffset("y abc-def y", new int[] {0, 2, 5, 6, 10}, new int[] {1, 5, 6, 9, 11});
     testOffset("y abc - def y", new int[] {0, 2, 6, 8, 12}, new int[] {1, 5, 7, 11, 13});

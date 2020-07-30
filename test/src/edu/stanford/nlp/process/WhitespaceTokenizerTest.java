@@ -26,16 +26,31 @@ public class WhitespaceTokenizerTest extends TestCase {
   };
 
   public static final String[][] RESULTS_EOL = {
-    {"This", "is", "a", "test", ".", "\n",
+    {"This", "is", "a", "test", ".", "*NL*",
      "This", "is", "a", "second", "line", "."},
-    {"A", "\n", "B", "\n", "\n", "C"},
+    {"A", "*NL*", "B", "*NL*", "*NL*", "C"},
     {"A.", "B"},
     { "皇后", "後世", "and", "(800)\u00A0326-1456" },
   };
 
+  public static final String[] TEST_WHITESPACE_ONLY = {
+    "        ",
+    "",
+  };
 
-  public void runTest(TokenizerFactory<? extends HasWord> factory,
-                      String[] testStrings, String[][] resultsStrings) {
+  public static final String[] TEST_WHITESPACE_ONLY_EOL = {
+    "\n\n\n",
+  };
+
+  public static final String[] TEST_NO_WHITESPACE = {
+    "Thisisatest.Thisisasecondline.",
+    "ABC",
+    "A.B",
+    "皇后30003000後世and(800)00A0326-1456",
+  };
+
+  private static void runTest(TokenizerFactory<? extends HasWord> factory,
+                              String[] testStrings, String[][] resultsStrings) {
     for (int i = 0; i < testStrings.length; ++i) {
       Tokenizer<? extends HasWord> tokenizer =
         factory.getTokenizer(new StringReader(testStrings[i]));
@@ -52,7 +67,7 @@ public class WhitespaceTokenizerTest extends TestCase {
     runTest(WhitespaceTokenizer.factory(true), TEST, RESULTS_EOL);
   }
 
-  public void testCLTokenizer() {
+  public void testCoreLabelTokenizer() {
     LexedTokenFactory<CoreLabel> factory = new CoreLabelTokenFactory();
     runTest(new WhitespaceTokenizer.WhitespaceTokenizerFactory<CoreLabel>
               (factory, false),
@@ -60,6 +75,39 @@ public class WhitespaceTokenizerTest extends TestCase {
     runTest(new WhitespaceTokenizer.WhitespaceTokenizerFactory<CoreLabel>
               (factory, true),
             TEST, RESULTS_EOL);
+  }
+
+  /* Tests the "whitespace only" bound */
+  public void testNoTextWhiteSpaceTokenizer() {
+    for (int i = 0; i < TEST_WHITESPACE_ONLY.length; ++i) {
+      Tokenizer<? extends HasWord> tokenizer =
+        WhitespaceTokenizer.factory(true).getTokenizer(new StringReader(TEST_WHITESPACE_ONLY[i]));
+      List<? extends HasWord> tokens = tokenizer.tokenize();
+      int expectedNumberOfActualTokens = 0;
+      assertEquals(expectedNumberOfActualTokens, tokens.size());
+    }
+  }
+
+  public void testPureWhiteSpaceEOLTokenizer() {
+    for (int i = 0; i < TEST_WHITESPACE_ONLY_EOL.length; ++i) {
+      Tokenizer<? extends HasWord> tokenizer =
+        WhitespaceTokenizer.factory(false).getTokenizer(new StringReader(TEST_WHITESPACE_ONLY_EOL[i]));
+      List<? extends HasWord> tokens = tokenizer.tokenize();
+      int expectedNumberOfActualTokens = 0;
+      assertEquals(expectedNumberOfActualTokens, tokens.size());
+    }
+  }
+
+  /* Tests the "no whitespace at all" bound */
+  public void testNoWhiteSpaceTokenizer() {
+    for (int i = 0; i < TEST_NO_WHITESPACE.length; ++i) {
+      Tokenizer<? extends HasWord> tokenizer =
+        WhitespaceTokenizer.factory(true).getTokenizer(new StringReader(TEST_NO_WHITESPACE[i]));
+      List<? extends HasWord> tokens = tokenizer.tokenize();
+      int expectedNumberOfActualTokens = 1;
+      assertEquals(expectedNumberOfActualTokens, tokens.size());
+      assertEquals(TEST_NO_WHITESPACE[i], tokens.get(0).word());
+    }
   }
 
 }

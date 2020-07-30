@@ -29,7 +29,7 @@ import java.util.*;
 public class KBPSemgrexExtractor implements KBPRelationExtractor {
   protected final Redwood.RedwoodChannels logger = Redwood.channels(KBPSemgrexExtractor.class);
 
-  @ArgumentParser.Option(name="dir", gloss="The tokensregex directory")
+  @ArgumentParser.Option(name="dir", gloss="The semgrex directory")
   public static String DIR = DefaultPaths.DEFAULT_KBP_SEMGREX_DIR;
 
   @ArgumentParser.Option(name="test", gloss="The dataset to test on")
@@ -49,7 +49,8 @@ public class KBPSemgrexExtractor implements KBPRelationExtractor {
       logger.log("Creating SemgrexRegexExtractor");
     // Create extractors
     for (RelationType rel : RelationType.values()) {
-      String filename = semgrexdir + File.separator + rel.canonicalName.replace("/", "SLASH") + ".rules";
+      String relFileNameComponent = rel.canonicalName.replaceAll(":", "_");
+      String filename = semgrexdir + File.separator + relFileNameComponent.replace("/", "SLASH") + ".rules";
       if (IOUtils.existsInClasspathOrFileSystem(filename)) {
 
         List<SemgrexPattern> rulesforrel = SemgrexBatchParser.compileStream(IOUtils.getInputStreamFromURLOrClasspathOrFileSystem(filename));
@@ -70,13 +71,12 @@ public class KBPSemgrexExtractor implements KBPRelationExtractor {
           rel.validNamedEntityLabels.contains(input.objectType)) {
         Collection<SemgrexPattern> rulesForRel = rules.get(rel);
         CoreMap sentence = input.sentence.asCoreMap(Sentence::nerTags, Sentence::dependencyGraph);
-        boolean matches
-            = matches(sentence, rulesForRel, input,
-            sentence.get(SemanticGraphCoreAnnotations.EnhancedPlusPlusDependenciesAnnotation.class)) ||
-            matches(sentence, rulesForRel, input,
-                sentence.get(SemanticGraphCoreAnnotations.AlternativeDependenciesAnnotation.class));
+        boolean matches = (matches(sentence, rulesForRel, input,
+                                   sentence.get(SemanticGraphCoreAnnotations.EnhancedPlusPlusDependenciesAnnotation.class)) ||
+                           matches(sentence, rulesForRel, input,
+                                   sentence.get(SemanticGraphCoreAnnotations.AlternativeDependenciesAnnotation.class)));
         if (matches) {
-          //logger.log("MATCH for " + rel +  ". " + sentence: + sentence + " with rules for  " + rel);
+          //logger.log("MATCH for " + rel +  ".  sentence:" + sentence + " with rules for  " + rel);
           return Pair.makePair(rel.canonicalName, 1.0);
         }
       }
@@ -109,21 +109,26 @@ public class KBPSemgrexExtractor implements KBPRelationExtractor {
 
     for (SemgrexPattern p : rulesForRel) {
 
-      try {
-        SemgrexMatcher n = p.matcher(graph);
-        while (n.find()) {
-          IndexedWord entity = n.getNode("entity");
-          IndexedWord slot = n.getNode("slot");
-          boolean hasSubject = entity.index() >= input.subjectSpan.start() + 1 && entity.index() <= input.subjectSpan.end();
-          boolean hasObject  = slot.index() >= input.objectSpan.start() + 1 && slot.index() <= input.objectSpan.end();
-
-          if (hasSubject && hasObject) {
-            return true;
-          }
+      SemgrexMatcher n = p.matcher(graph);
+      while (n.find()) {
+        IndexedWord entity = n.getNode("entity");
+        IndexedWord slot = n.getNode("slot");
+        if (entity == null) {
+          // really this is a hideous bug, right?  these rules
+          // should all have entity and slot set
+          logger.warn("Found a relation with a missing entity: " + p);
+          continue;
         }
-      } catch (Exception e) {
-        //Happens when graph has no roots
-        return false;
+        if (slot == null) {
+          logger.warn("Found a relation with a missing slot: " + p);
+          continue;
+        }
+        boolean hasSubject = entity.index() >= input.subjectSpan.start() + 1 && entity.index() <= input.subjectSpan.end();
+        boolean hasObject  = slot.index() >= input.objectSpan.start() + 1 && slot.index() <= input.objectSpan.end();
+        
+        if (hasSubject && hasObject) {
+          return true;
+        } 
       }
     }
     return false;

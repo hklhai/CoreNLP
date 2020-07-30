@@ -1,18 +1,19 @@
 package edu.stanford.nlp.ie;
 
-
-import edu.stanford.nlp.ling.SentenceUtils;
-import junit.framework.TestCase;
-
-import edu.stanford.nlp.ling.CoreLabel;
-import edu.stanford.nlp.sequences.SeqClassifierFlags;
-import edu.stanford.nlp.util.PaddedList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
+import org.junit.Test;
+
+import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.ling.SentenceUtils;
+import edu.stanford.nlp.sequences.SeqClassifierFlags;
+import edu.stanford.nlp.util.PaddedList;
 
 /**
  * Tests that various features options produce the expected sets of strings.
@@ -20,7 +21,7 @@ import java.util.Set;
  *
  * @author John Bauer
  */
-public class NERFeatureFactoryITest extends TestCase {
+public class NERFeatureFactoryITest {
 
   private static void checkFeatures(Set<String> features, String ... expected) {
     assertEquals(expected.length, features.size());
@@ -29,6 +30,7 @@ public class NERFeatureFactoryITest extends TestCase {
     }
   }
 
+  @Test
   public void testSloppyGazette() {
     List<CoreLabel> sentence = SentenceUtils.toCoreLabelList("For three years , John Bauer has worked at Stanford .".split(" +"));
     PaddedList<CoreLabel> paddedSentence = new PaddedList<>(sentence, new CoreLabel());
@@ -41,13 +43,18 @@ public class NERFeatureFactoryITest extends TestCase {
     NERFeatureFactory<CoreLabel> factory = new NERFeatureFactory<>();
     factory.init(flags);
 
-    Set<String> features;
-    features = new HashSet<String>(factory.featuresC(paddedSentence, 4));
-    checkFeatures(features, "BAR-GAZ", "BAZ-GAZ", "FOO-GAZ", "BAR-GAZ2", "BAZ-GAZ2", "FOO-GAZ1", "John-WORD");
-    features = new HashSet<String>(factory.featuresC(paddedSentence, 5));
-    checkFeatures(features, "BAR-GAZ", "BAZ-GAZ", "BAR-GAZ2", "BAZ-GAZ2", "Bauer-WORD");
-    features = new HashSet<String>(factory.featuresC(paddedSentence, 6));
-    checkFeatures(features, "has-WORD");
+    Set<String> features = new HashSet<String>();
+    NERFeatureFactory.FeatureCollector collector = new NERFeatureFactory.FeatureCollector(features);
+    factory.featuresC(paddedSentence, 4, collector);
+    checkFeatures(features, "FOO-GAZ|C", "BAR-GAZ|C", "John-WORD|C", "FOO-GAZ1|C", "BAR-GAZ2|C",
+                  "BAZ-GAZ2|C", "BAZ-GAZ|C");
+    features.clear();
+    factory.featuresC(paddedSentence, 5, collector);
+    checkFeatures(features, "BAR-GAZ|C", "BAZ-GAZ|C", "BAR-GAZ2|C", "BAZ-GAZ2|C", "Bauer-WORD|C");
+    features.clear();
+    factory.featuresC(paddedSentence, 6, collector);
+    checkFeatures(features, "has-WORD|C");
+    features.clear();
   }
 
 }

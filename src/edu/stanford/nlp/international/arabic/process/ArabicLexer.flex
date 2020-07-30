@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.process.LexedTokenFactory;
+import edu.stanford.nlp.process.CoreLabelTokenFactory;
 import edu.stanford.nlp.util.Generics;
 import edu.stanford.nlp.util.PropertiesUtils;
 
@@ -30,6 +31,8 @@ import edu.stanford.nlp.util.PropertiesUtils;
 %{
  private LexedTokenFactory<?> tokenFactory;
  private boolean invertible;
+ private CoreLabel prevWord;
+ private StringBuilder prevWordAfter;
  
  // Convert Arabic digits to ASCII digits
  private boolean normArDigits;
@@ -88,6 +91,14 @@ import edu.stanford.nlp.util.PropertiesUtils;
    atbEscaping = PropertiesUtils.getBool(props, "atbEscaping", false);
 
    setupNormalizationMap();
+
+   if (invertible) {
+     if (!(tf instanceof CoreLabelTokenFactory)) {
+       throw new IllegalArgumentException("ArabicLexer: the invertible option requires a CoreLabelTokenFactory");
+     }
+     prevWord = (CoreLabel) tf.makeToken("", 0, 0);
+     prevWordAfter = new StringBuilder();
+   }
  }
 
  private void setupNormalizationMap() {
@@ -276,13 +287,13 @@ import edu.stanford.nlp.util.PropertiesUtils;
       throw new RuntimeException(this.getClass().getName() + ": Token factory is null.");
     }
     if (invertible) {
-      //String str = prevWordAfter.toString();
-      //prevWordAfter.setLength(0);
+      String str = prevWordAfter.toString();
+      prevWordAfter.setLength(0);
       CoreLabel word = (CoreLabel) tokenFactory.makeToken(txt, yychar, yylength());
       word.set(CoreAnnotations.OriginalTextAnnotation.class, originalText);
-      //word.set(CoreAnnotations.BeforeAnnotation.class, str);
-      //prevWord.set(CoreAnnotations.AfterAnnotation.class, str);
-      //prevWord = word;
+      word.set(CoreAnnotations.BeforeAnnotation.class, str);
+      prevWord.set(CoreAnnotations.AfterAnnotation.class, str);
+      prevWord = word;
       return word;
     } else {
       return tokenFactory.makeToken(txt, yychar, yylength());
@@ -306,12 +317,20 @@ CR = \r|\r?\n|\u2028|\u2029|\u000B|\u000C|\u0085
 SPACE = [ \t\u00A0\u2000-\u200A\u202F\u3000]
 SPACES = {SPACE}+
 ELLIPSIS = \.\.\.\.*
-ARPUNC = [\u0600-\u060D\u061B-\u061F\u066A-\u066D\u06D4]
-LATINPUNC = [\u0021-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u007E\u00A1-\u00BF\u2010-\u2027\u2030-\u205E\u20A0-\u20B5\u2E2E]
+ARPUNC = [\u0600-\u060B\u060D\u061B-\u061F\u066A-\u066D\u06D4]
+LATINPUNC = [\u0022-\u002B\u002D\u002F\u003A-\u003E\u0040\u005B-\u0060\u007B-\u007E\u00A1-\u00BF\u2010-\u2027\u2030-\u205E\u20A0-\u20B5\u2E2E]
 PUNC = ({ARPUNC}|{LATINPUNC})+
 DIGIT = [:digit:]|[\u0660-\u0669\u06F0-\u06F9]
 DIGITS = {DIGIT}+
-NUMBER = ({DIGITS}[_\-,\+/\\\.\u066B\u066C\u060C\u060D]*)+
+/* If a number ends with +, ., etc, chop that off instead of keeping it. */
+NUMBER = {DIGITS}([_\-,\+/\\\.\u066B\u066C\u060C\u060D]+{DIGITS}+)*
+LATINWORD = ([a-zA-Z]|{DIGIT})+
+
+/* Some of these single punctuations get their own token, although note that ... is covered earlier by ELLIPSIS */
+PERIOD = \.
+COMMA = ,|\u060C
+/* !?!?!?!?! */
+EXCLAM = [!?]+
 
 /* Sometimes _ is used for tatweel \u0640, so include it in this set */
 ARCHAR = [_\u060E-\u061A\u0621-\u065E\u066E-\u06D3\u06D5-\u06EF\u06FA-\u06FF]
@@ -348,29 +367,50 @@ PAREN = -LRB-|-RRB-
 {EMAIL}     |
 {ARNUMWORD} |
 {NUMBER}    |
-{DIGITS}    |
+{LATINWORD} |
+{PERIOD}    |
+{COMMA}     |
+{EXCLAM}    |
 {PUNC}      { return getNext(false); }
 
 {NULLPRONSEG}  { if (removeProMarker) {
                 if ( ! removeSegMarker) {
                   return getNext("-", yytext());
+                } else if (invertible) {
+                  prevWordAfter.append(yytext());
                 }
               } else {
                 return getNext(false);
               }
             }
 
-{NULLPRON} { if (! removeProMarker) return getNext(false); } 
+{NULLPRON} { if (! removeProMarker) {
+               return getNext(false);
+             } else if (invertible) {
+               prevWordAfter.append(yytext());
+             }
+           }
 
 {ARWORD}    |
 {FORNWORD}  { return getNext(true); }
 
 {CR}        { if (tokenizeNLs) {
                 return getNext(NEWLINE_TOKEN, yytext());
+              } else if (invertible) {
+                prevWordAfter.append(yytext());
               }
             } 
-{SPACES}    { }
+{SPACES}    { if (invertible) {
+                prevWordAfter.append(yytext());
+              }
+            }
 .           { System.err.printf("Untokenizable: %s%n", yytext());
 	      return getNext(true);
 	    }
-<<EOF>>     { return null; }
+<<EOF>>     { if (invertible) {
+                String str = prevWordAfter.toString();
+                prevWord.set(CoreAnnotations.AfterAnnotation.class, str);
+                prevWordAfter.setLength(0);
+              }
+              return null; 
+            }

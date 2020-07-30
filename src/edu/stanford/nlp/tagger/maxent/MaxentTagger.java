@@ -73,11 +73,11 @@ import java.text.DecimalFormat;
  *
  * <ul>
  * <li> A bi-directional dependency network tagger in
- *      {@code edu/stanford/nlp/models/pos-tagger/english-left3words/english-bidirectional-distsim.tagger}.
+ *      {@code edu/stanford/nlp/models/pos-tagger/english-bidirectional-distsim.tagger}.
  *      Its accuracy was 97.32% on Penn Treebank WSJ secs. 22-24.</li>
  * <li> A model using only left second-order sequence information and similar but less
  *      unknown words and lexical features as the previous model in
- *      {@code edu/stanford/nlp/models/pos-tagger/english-left3words/english-left3words-distsim.tagger}
+ *      {@code edu/stanford/nlp/models/pos-tagger/english-left3words-distsim.tagger}
  *      This tagger runs a lot faster, and is recommended for general use.
  *      Its accuracy was 96.92% on Penn Treebank WSJ secs. 22-24.</li>
  * </ul>
@@ -85,28 +85,28 @@ import java.text.DecimalFormat;
  * <h3>Using the Java API</h3>
  *
  * <dl>
- * <dt>
+ * <dt style="margin-top:2em">
  * A MaxentTagger can be made with a constructor taking as argument the location of parameter files for a trained tagger: </dt>
  * <dd> {@code MaxentTagger tagger = new MaxentTagger("models/left3words-wsj-0-18.tagger"); }</dd>
- * <p>
- * <dt>A default path is provided for the location of the tagger on the Stanford NLP machines:</dt>
+ * <dt style="margin-top:2em">
+ * A default path is provided for the location of the tagger on the Stanford NLP machines:</dt>
  * <dd>{@code MaxentTagger tagger = new MaxentTagger(DEFAULT_NLP_GROUP_MODEL_PATH); }</dd>
- * <p>
- * <dt>If you set the NLP_DATA_HOME environment variable,
+ * <dt style="margin-top:2em">
+ * If you set the NLP_DATA_HOME environment variable,
  * DEFAULT_NLP_GROUP_MODEL_PATH will instead point to the directory
  * given in NLP_DATA_HOME.</dt>
- * <p>
- * <dt>To tag a List of HasWord and get a List of TaggedWord, you can use one of: </dt>
- * <dd>{@code List&lt;TaggedWord&gt; taggedSentence = tagger.tagSentence(List&lt;? extends HasWord&gt; sentence)}</dd>
- * <dd>{@code List&lt;TaggedWord&gt; taggedSentence = tagger.apply(List&lt;? extends HasWord&gt; sentence)}</dd>
- * <p>
- * <dt>To tag a list of sentences and get back a list of tagged sentences:
+ * <dt style="margin-top:2em">
+ * To tag a List of HasWord and get a List of TaggedWord, you can use one of: </dt>
+ * <dd>{@code List<TaggedWord> taggedSentence = tagger.tagSentence(List<? extends HasWord> sentence)}</dd>
+ * <dd>{@code List<TaggedWord> taggedSentence = tagger.apply(List<? extends HasWord> sentence)}</dd>
+ * <dt style="margin-top:2em">
+ * To tag a list of sentences and get back a list of tagged sentences:
  * <dd>{@code List taggedList = tagger.process(List sentences)}</dd>
- * <p>
- * <dt>To tag a String of text and to get back a String with tagged words:</dt>
+ * <dt style="margin-top:2em">
+ * To tag a String of text and to get back a String with tagged words:</dt>
  * <dd> {@code String taggedString = tagger.tagString("Here's a tagged string.")}</dd>
- * <p>
- * <dt>To tag a string of <i>correctly tokenized</i>, whitespace-separated words and get a string of tagged words back:</dt>
+ * <dt style="margin-top:2em">
+ * To tag a string of <i>correctly tokenized</i>, whitespace-separated words and get a string of tagged words back:</dt>
  * <dd> {@code String taggedString = tagger.tagTokenizedString("Here 's a tagged string .")}</dd>
  * </dl>
  *
@@ -139,9 +139,9 @@ import java.text.DecimalFormat;
  *
  * Usage:
  * For tagging (plain text):
- * <pre>java edu.stanford.nlp.tagger.maxent.MaxentTagger -model &lt;modelFile&gt; -textFile &lt;textfile&gt; </pre>
+ * <pre>java edu.stanford.nlp.tagger.maxent.MaxentTagger -model modelFile -textFile textfile </pre>
  * For testing (evaluating against tagged text):
- * <pre>java edu.stanford.nlp.tagger.maxent.MaxentTagger -model &lt;modelFile&gt; -testFile &lt;testfile&gt; </pre>
+ * <pre>java edu.stanford.nlp.tagger.maxent.MaxentTagger -model modelFile -testFile testfile </pre>
  * You can use the same properties file as for training
  * if you pass it in with the "-props" argument. The most important
  * arguments for tagging (besides "model" and "file") are "tokenize"
@@ -157,6 +157,7 @@ import java.text.DecimalFormat;
  * ("-") to turn them into a flag. The following properties are recognized:
  *
  * <table border="1">
+ * <caption>MaxentTagger command line params</caption>
  * <tr><td><b>Property Name</b></td><td><b>Type</b></td><td><b>Default Value</b></td><td><b>Relevant Phase(s)</b></td><td><b>Description</b></td></tr>
  * <tr><td>model</td><td>String</td><td>N/A</td><td>All</td><td>Path and filename where you would like to save the model (training) or where the model should be loaded from (testing, tagging).</td></tr>
  * <tr><td>trainFile</td><td>String</td><td>N/A</td><td>Train</td>
@@ -189,10 +190,10 @@ import java.text.DecimalFormat;
  * <tr><td>encoding</td><td>String</td><td>UTF-8</td><td>All</td><td>Encoding of the read files (training, testing) and the output text files.</td></tr>
  * <tr><td>tokenize</td><td>boolean</td><td>true</td><td>Tag,Test</td><td>Whether or not the file needs to be tokenized.  If this is false, the tagger assumes that white space separates words if and only if they should be tagged as separate tokens, and that the input is strictly one sentence per line.</td></tr>
  * <tr><td>tokenizerFactory</td><td>String</td><td>edu.stanford.nlp.<br>process.PTBTokenizer</td><td>Tag,Test</td><td>Fully qualified class name of the tokenizer to use.  edu.stanford.nlp.process.PTBTokenizer does basic English tokenization.</td></tr>
- * <tr><td>tokenizerOptions</td><td>String</td><td></td><td>Tag,Test</td><td>Known options for the particular tokenizer used. A comma-separated list. For PTBTokenizer, options of interest include {@code americanize=false} and {@code asciiQuotes} (for German). Note that any choice of tokenizer options that conflicts with the tokenization used in the tagger training data will likely degrade tagger performance.</td></tr>
+ * <tr><td>tokenizerOptions</td><td>String</td><td></td><td>Tag,Test</td><td>Known options for the particular tokenizer used. A comma-separated list. For PTBTokenizer, options of interest include {@code americanize=false} and {@code quotes=ascii} (for German). Note that any choice of tokenizer options that conflicts with the tokenization used in the tagger training data will likely degrade tagger performance.</td></tr>
  * <tr><td>sentenceDelimiter</td><td>String</td><td>null</td><td>Tag,Test</td><td>A marker used to separate a text into sentences. If not set (equal to {@code null}), sentence breaking is done by content (looking for periods, etc.) Otherwise, it will break on this String, except that if the String is "newline", it breaks on the String "\\n".</td></tr>
  * <tr><td>arch</td><td>String</td><td>generic</td><td>Train</td><td>Architecture of the model, as a comma-separated list of options, some with a parenthesized integer argument written k here: this determines what features are used to build your model.  See {@link ExtractorFrames} and {@link ExtractorFramesRare} for more information.</td></tr>
- * <tr><td>wordFunction</td><td>String</td><td>(none)</td><td>Train</td><td>A function to apply to the text before training or testing.  Must inherit from edu.stanford.nlp.util.Function&lt;String, String&gt;.  Can be blank.</td></tr>
+ * <tr><td>wordFunction</td><td>String</td><td>(none)</td><td>Train</td><td>A function to apply to the text before training or testing.  Must inherit from {@code java.util.function.Function<String, String>}.  Can be blank.</td></tr>
  * <tr><td>lang</td><td>String</td><td>english</td><td>Train</td><td>Language from which the part of speech tags are drawn. This option determines which tags are considered closed-class (only fixed set of words can be tagged with a closed-class tag, such as prepositions). Defined languages are 'english' (Penn tag set), 'polish' (very rudimentary), 'french', 'chinese', 'arabic', 'german', and 'medline'.  </td></tr>
  * <tr><td>openClassTags</td><td>String</td><td>N/A</td><td>Train</td><td>Space separated list of tags that should be considered open-class.  All tags encountered that are not in this list are considered closed-class.  E.g. format: "NN VB"</td></tr>
  * <tr><td>closedClassTags</td><td>String</td><td>N/A</td><td>Train</td><td>Space separated list of tags that should be considered closed-class.  All tags encountered that are not in this list are considered open-class.</td></tr>
@@ -215,6 +216,7 @@ import java.text.DecimalFormat;
  * <tr><td>debug</td><td>boolean</td><td>boolean</td><td>All</td><td>Whether to write debugging information (words, top words, unknown words, confusion matrix).  Useful for error analysis.</td></tr>
  * <tr><td>debugPrefix</td><td>String</td><td>N/A</td><td>All</td><td>File (path) prefix for where to write out the debugging information (relevant only if debug=true).</td></tr>
  * <tr><td>nthreads</td><td>int</td><td>1</td><td>Test,Text</td><td>Number of threads to use when processing text.</td></tr>
+ * <tr><td>minWordsLockTags</td><td>int</td><td>1</td><td>All</td><td>If a word occurs at least this many times in the training data, the tagger will only propose known tags as candidates.</td></tr>
  * </table>
  *
  *
@@ -245,7 +247,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
   public static final String DEFAULT_NLP_GROUP_MODEL_PATH =
     new File(TAGGER_HOME, "english-left3words-distsim.tagger").getPath();
   public static final String DEFAULT_JAR_PATH =
-    "edu/stanford/nlp/models/pos-tagger/english-left3words/english-left3words-distsim.tagger";
+    "edu/stanford/nlp/models/pos-tagger/english-left3words-distsim.tagger";
   public static final String DEFAULT_DISTRIBUTION_PATH =
     "models/english-left3words-distsim.tagger";
 
@@ -311,7 +313,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
    *        {@code /u/nlp/data/pos-tagger/wsj3t0-18-left3words/left3words-wsj-0-18.tagger}.
    *        However, if it starts with "https?://" it will be interpreted as a URL.
    *        One can also load models directly from the classpath, as in loading from
-   *        {@code edu/stanford/nlp/models/pos-tagger/wsj3t0-18-bidirectional/bidirectional-distsim-wsj-0-18.tagger}.
+   *        {@code edu/stanford/nlp/models/pos-tagger/bidirectional-distsim-wsj-0-18.tagger}.
    * @param config TaggerConfig based on command-line arguments
    * @param printLoading Whether to print a message saying what model file is being loaded and how long it took when finished.
    * @throws RuntimeIOException if I/O errors or serialization errors
@@ -361,8 +363,9 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
   }
 
   private LambdaSolveTagger prob;
-  // For each extractor index, we have a map from possible extracted
-  // features to an array which maps from tag number to feature weight index in the lambdas array.
+
+  // For each extractor index (List index), we have a Map from possible extracted
+  // feature values to an array which maps from tag number to feature weight index in the lambdas array.
   List<Map<String, int[]>> fAssociations = Generics.newArrayList();
   //PairsHolder pairs = new PairsHolder();
   Extractors extractors;
@@ -522,8 +525,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
       // log.info("occurringTagsOnly: "+occurringTagsOnly);
       // log.info("possibleTagsOnly: "+possibleTagsOnly);
 
-      if(config.getDefaultScore() >= 0)
-        defaultScore = config.getDefaultScore();
+      defaultScore = config.getDefaultScore();
     }
 
     // just in case, reset the defaultScores array so it will be
@@ -686,10 +688,10 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
 
   /**
    * Searching the lambda array for 0 entries, removes them.  This
-   * saves a large chunk of space in the tagger models which are build
+   * saves a large chunk of space in the tagger models which are built
    * with L1 regularization.
    * <br>
-   * After removing the zeros, go through the feature arrays and
+   * After removing the zeroes, go through the feature arrays and
    * reindex the pointers into the lambda array.  This saves some time
    * later on at runtime.
    */
@@ -780,7 +782,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
   /** This reads the complete tagger from a single model stored in a file, at a URL,
    *  or as a resource in a jar file, and initializes the tagger using a
    *  combination of the properties passed in and parameters from the file.
-   *  <p>
+   *  <br>
    *  <i>Note for the future:</i> This assumes that the TaggerConfig in the file
    *  has already been read and used.  This work is done inside the
    *  constructor of TaggerConfig.  It might be better to refactor
@@ -803,7 +805,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
   /** This reads the complete tagger from a single model provided as an InputStream,
    *  and initializes the tagger using a
    *  combination of the properties passed in and parameters from the file.
-   *  <p>
+   *  <br>
    *  <i>Note for the future:</i> This assumes that the TaggerConfig in the file
    *  has already been read and used.  This work is done inside the
    *  constructor of TaggerConfig.  It might be better to refactor
@@ -831,7 +833,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
   /** This reads the complete tagger from a single model file, and inits
    *  the tagger using a combination of the properties passed in and
    *  parameters from the file.
-   *  <p>
+   *  <br>
    *  <i>Note for the future: This assumes that the TaggerConfig in the file
    *  has already been read and used.  It might be better to refactor
    *  things so that is all done inside this method, but for the moment
@@ -878,23 +880,33 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
       int sizeAssoc = rf.readInt();
       fAssociations = Generics.newArrayList();
       for (int i = 0; i < extractors.size() + extractorsRare.size(); ++i) {
-        fAssociations.add(Generics.<String, int[]>newHashMap());
+        fAssociations.add(Generics.newHashMap());
       }
-      if (VERBOSE) log.info("Reading %d feature keys...%n",sizeAssoc);
+      if (VERBOSE) log.infof("Reading %d feature keys...%n", sizeAssoc);
       PrintFile pfVP = null;
       if (VERBOSE) {
         pfVP = new PrintFile("pairs.txt");
       }
+      FeatureKey fK = new FeatureKey(); // reused in for loop but not stored. just a temp variable
       for (int i = 0; i < sizeAssoc; i++) {
         int numF = rf.readInt();
-        FeatureKey fK = new FeatureKey();
         fK.read(rf);
         numFA[fK.num]++;
+        if (VERBOSE) {
+          String eName = (fK.num < extractors.size() ? extractors.get(fK.num): extractorsRare.get(fK.num - extractors.size())).toString();
+          Map<String, int[]> valFeats = fAssociations.get(fK.num);
+          pfVP.print(eName);
+          pfVP.print(' ');
+          pfVP.print(fK);
+          pfVP.print(' ');
+          if (valFeats != null) {
+            pfVP.print(valFeats.keySet());
+          }
+          pfVP.println();
+        }
 
-        // TODO: rewrite the writing / reading code to store
-        // fAssociations in a cleaner manner?  Only do this when
-        // rebuilding all the tagger models anyway.  When we do that, we
-        // can get rid of FeatureKey
+        // TODO: rewrite the writing / reading code to store fAssociations in a cleaner manner?
+        // Only do this when rebuilding all the tagger models anyway.  When we do that, we can get rid of FeatureKey
         Map<String, int[]> fValueAssociations = fAssociations.get(fK.num);
         int[] fTagAssociations = fValueAssociations.get(fK.val);
         if (fTagAssociations == null) {
@@ -911,7 +923,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
       }
       if (VERBOSE) {
         for (int k = 0; k < numFA.length; k++) {
-          log.info("Number of features of kind " + k + ' ' + numFA[k]);
+          log.info("Number of features of kind " + k + ' ' + (k < extractors.size() ? extractors.get(k): extractorsRare.get(k - extractors.size())) +": " + numFA[k]);
         }
       }
       prob = new LambdaSolveTagger(rf);
@@ -927,7 +939,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
   }
 
 
-  protected void dumpModel(PrintStream out) {
+  private void dumpModel(PrintStream out) {
     out.println("Features: template featureValue tag: lambda");
     NumberFormat nf = new DecimalFormat(" 0.000000;-0.000000");
     for (int i = 0; i < fAssociations.size(); ++i) {
@@ -941,7 +953,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
           if (association >= 0) {
             FeatureKey fk = new FeatureKey(i, featureValue, tags.getTag(j));
             out.println((fk.num < extractors.size() ? extractors.get(fk.num) : extractorsRare.get(fk.num - extractors.size()))
-                    + " " + fk.val + " " + fk.tag + ": " + nf.format(getLambdaSolve().lambda[association]));
+                    + " " + fk.val + ' ' + fk.tag + ": " + nf.format(getLambdaSolve().lambda[association]));
           }
         }
       }
@@ -1004,7 +1016,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
    * Tags the Words in each Sentence in the given List with their
    * grammatical part-of-speech. The returned List contains Sentences
    * consisting of TaggedWords.
-   * <p><b>NOTE: </b>The input document must contain sentences as its elements,
+   * <br><b>NOTE: </b>The input document must contain sentences as its elements,
    * not words. To turn a Document of words into a Document of sentences, run
    * it through {@link edu.stanford.nlp.process.WordToSentenceProcessor}.
    *
@@ -1122,7 +1134,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
    * fed into tagSentence.
    *
    * @param r Reader where untokenized text is read
-   * @param tokenizerFactory Tokenizer.  This can be <code>null</code> in which case
+   * @param tokenizerFactory Tokenizer.  This can be {@code null} in which case
    *     the default English tokenizer (PTBTokenizerFactory) is used.
    * @return List of tokenized sentences
    */
@@ -1147,7 +1159,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
       tagger.config.dump(System.out);
       tagger.dumpModel(System.out);
     } catch (Exception e) {
-      e.printStackTrace();
+      log.err(e);
     }
   }
 
@@ -1159,7 +1171,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
    */
   private static void runTest(TaggerConfig config) {
     if (config.getVerbose()) {
-      log.info("## tagger testing invoked at " + new Date() + " with arguments:");
+      log.info("Tagger testing invoked at " + new Date() + " with arguments:");
       config.dump();
     }
 
@@ -1172,8 +1184,7 @@ public class MaxentTagger extends Tagger implements ListProcessor<List<? extends
       printErrWordsPerSec(millis, testClassifier.getNumWords());
       testClassifier.printModelAndAccuracy(tagger);
     } catch (Exception e) {
-      log.info("An error occurred while testing the tagger.");
-      e.printStackTrace();
+      log.warn("An error occurred while testing the tagger.", e);
     }
   }
 

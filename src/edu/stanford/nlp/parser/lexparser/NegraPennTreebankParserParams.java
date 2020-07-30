@@ -72,6 +72,7 @@ public class NegraPennTreebankParserParams extends AbstractTreebankParserParams 
     headFinder = new NegraHeadFinder();
 
  // override output encoding: make it UTF-8
+    setInputEncoding("UTF-8");
     setOutputEncoding("UTF-8");
   }
 
@@ -198,7 +199,7 @@ public class NegraPennTreebankParserParams extends AbstractTreebankParserParams 
       i+=2;
     } else if (args[i].equalsIgnoreCase("-headFinder") && (i + 1 < args.length)) {
       try {
-        headFinder = (HeadFinder) Class.forName(args[i + 1]).newInstance();
+        headFinder = (HeadFinder) Class.forName(args[i + 1]).getDeclaredConstructor().newInstance();
       } catch (Exception e) {
         log.info(e);
         log.info(this.getClass().getName() + ": Could not load head finder " + args[i + 1]);

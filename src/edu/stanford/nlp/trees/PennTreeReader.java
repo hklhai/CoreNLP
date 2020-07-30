@@ -1,4 +1,5 @@
 package edu.stanford.nlp.trees; 
+import edu.stanford.nlp.io.RuntimeIOException;
 import edu.stanford.nlp.util.logging.Redwood;
 
 import java.io.*;
@@ -17,14 +18,18 @@ import edu.stanford.nlp.ling.HasWord;
  * format in which the trees are stored. This reader is compatible with both PTB
  * and PATB trees.
  * <br>
- * One small detail to note is that the <code>PennTreeReader</code>
+ * One small detail to note is that the {@code PennTreeReader}
  * silently replaces \* with * and \/ with /.  Two possible designs
- * for this were to make the <code>PennTreeReader</code> always do
- * this or to make the <code>TreeNormalizers</code> do this.  We
- * decided to put it in the <code>PennTreeReader</code> class itself
+ * for this were to make the {@code PennTreeReader} always do
+ * this or to make the {@code TreeNormalizers} do this.  We
+ * decided to put it in the {@code PennTreeReader} class itself
  * to avoid the problem of people making new
- * <code>TreeNormalizers</code> and forgetting to include the
+ * {@code TreeNormalizers} and forgetting to include the
  * unescaping.
+ * <br>
+ * Also removed are -LRB- and -RRB- as leaves.  A corresponding
+ * re-escaping in the writers prints that back out.  This way, tools
+ * such as the parser see () instead of -LRB- -RRB-.
  *
  * @author Christopher Manning
  * @author Roger Levy
@@ -33,7 +38,7 @@ import edu.stanford.nlp.ling.HasWord;
 public class PennTreeReader implements TreeReader  {
 
   /** A logger for this class */
-  private static Redwood.RedwoodChannels log = Redwood.channels(PennTreeReader.class);
+  private static final Redwood.RedwoodChannels log = Redwood.channels(PennTreeReader.class);
 
   private final Reader reader;
   private final Tokenizer<String> tokenizer;
@@ -49,12 +54,12 @@ public class PennTreeReader implements TreeReader  {
   private static final String rightParen = ")";
 
   /**
-   * Read parse trees from a <code>Reader</code>.
+   * Read parse trees from a {@code Reader}.
    * For the defaulted arguments, you get a
-   * <code>SimpleTreeFactory</code>, no <code>TreeNormalizer</code>, and
-   * a <code>PennTreebankTokenizer</code>.
+   * {@code SimpleTreeFactory}, no {@code TreeNormalizer}, and
+   * a {@code PennTreebankTokenizer}.
    *
-   * @param in The <code>Reader</code>
+   * @param in The {@code Reader}
    */
   public PennTreeReader(Reader in) {
     this(in, new LabeledScoredTreeFactory());
@@ -62,7 +67,7 @@ public class PennTreeReader implements TreeReader  {
 
 
   /**
-   * Read parse trees from a <code>Reader</code>.
+   * Read parse trees from a {@code Reader}.
    *
    * @param in the Reader
    * @param tf TreeFactory -- factory to create some kind of Tree
@@ -126,14 +131,14 @@ public class PennTreeReader implements TreeReader  {
    * input stream. The method supports additional parentheses around the
    * tree (an unnamed ROOT node) so long as they are balanced. If the token stream
    * ends before the current tree is complete, then the method will throw an
-   * <code>IOException</code>.
+   * {@code IOException}.
    * <p>
    * Note that the method will skip malformed trees and attempt to
    * read additional trees from the input stream. It is possible, however,
    * that a malformed tree will corrupt the token stream. In this case,
-   * an <code>IOException</code> will eventually be thrown.
+   * an {@code IOException} will eventually be thrown.
    *
-   * @return A single tree, or <code>null</code> at end of token stream.
+   * @return A single tree, or {@code null} at end of token stream.
    */
   @Override
   public Tree readTree() throws IOException {
@@ -171,6 +176,8 @@ public class PennTreeReader implements TreeReader  {
 
   private static final Pattern STAR_PATTERN = Pattern.compile("\\\\\\*");
   private static final Pattern SLASH_PATTERN = Pattern.compile("\\\\/");
+  private static final Pattern LRB_PATTERN = Pattern.compile("-LRB-|=LRB=");
+  private static final Pattern RRB_PATTERN = Pattern.compile("-RRB-|=RRB=");
 
 
   private Tree getTreeFromInputStream() throws NoSuchElementException {
@@ -195,6 +202,7 @@ public class PennTreeReader implements TreeReader  {
           if (label != null) {
             label = STAR_PATTERN.matcher(label).replaceAll("*");
             label = SLASH_PATTERN.matcher(label).replaceAll("/");
+            // do not convert -LRB- or -RRB- tags internal to the tree
           }
 
           Tree newTree = treeFactory.newTreeNode(label, null); // dtrs are added below
@@ -235,6 +243,8 @@ public class PennTreeReader implements TreeReader  {
           String terminal = (treeNormalizer == null) ? token : treeNormalizer.normalizeTerminal(token);
           terminal = STAR_PATTERN.matcher(terminal).replaceAll("*");
           terminal = SLASH_PATTERN.matcher(terminal).replaceAll("/");
+          terminal = LRB_PATTERN.matcher(terminal).replaceAll("(");
+          terminal = RRB_PATTERN.matcher(terminal).replaceAll(")");
           Tree leaf = treeFactory.newLeaf(terminal);
           if (leaf.label() instanceof HasIndex) {
             HasIndex hi = (HasIndex) leaf.label();
@@ -265,7 +275,7 @@ public class PennTreeReader implements TreeReader  {
 
 
   /**
-   * Closes the underlying <code>Reader</code> used to create this
+   * Closes the underlying {@code Reader} used to create this
    * class.
    */
   @Override
@@ -292,7 +302,7 @@ public class PennTreeReader implements TreeReader  {
       }
       r.close();
     } catch (IOException ioe) {
-      ioe.printStackTrace();
+      throw new RuntimeIOException(ioe);
     }
   }
 

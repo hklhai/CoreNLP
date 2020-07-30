@@ -25,7 +25,7 @@ import edu.stanford.nlp.util.Pointer;
 import edu.stanford.nlp.util.StringUtils;
 
 import java.io.*;
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -47,7 +47,8 @@ public class JSONOutputter extends AnnotationOutputter {
 
 
   /** {@inheritDoc} */
-  @SuppressWarnings("RedundantCast")  // It's lying; we need the "redundant" casts (as of 2014-09-08)
+  @SuppressWarnings({"RedundantCast", "RedundantSuppression"})
+  // It's lying; we need the "redundant" casts (as of 2014-09-08)
   @Override
   public void print(Annotation doc, OutputStream target, Options options) throws IOException {
     PrintWriter writer = new PrintWriter(IOUtils.encodedOutputStreamWriter(target, options.encoding));
@@ -76,8 +77,8 @@ public class JSONOutputter extends AnnotationOutputter {
           l2.set("line", sentence.get(CoreAnnotations.LineNumberAnnotation.class));
           // (constituency tree)
           StringWriter treeStrWriter = new StringWriter();
-          TreePrint treePrinter = options.constituentTreePrinter;
-          if (treePrinter == AnnotationOutputter.DEFAULT_CONSTITUENT_TREE_PRINTER) {
+          TreePrint treePrinter = options.constituencyTreePrinter;
+          if (treePrinter == AnnotationOutputter.DEFAULT_CONSTITUENCY_TREE_PRINTER) {
             // note the '==' -- we're overwriting the default, but only if it was not explicitly set otherwise
             treePrinter = new TreePrint("oneline");
           }
@@ -85,6 +86,20 @@ public class JSONOutputter extends AnnotationOutputter {
           String treeStr = treeStrWriter.toString().trim();  // strip the trailing newline
           if (!"SENTENCE_SKIPPED_OR_UNPARSABLE".equals(treeStr)) {
             l2.set("parse", treeStr);
+          }
+          // binary tree (if present)
+          if (sentence.get(TreeCoreAnnotations.BinarizedTreeAnnotation.class) != null) {
+            StringWriter binaryTreeStrWriter = new StringWriter();
+            TreePrint binaryTreePrinter = options.constituencyTreePrinter;
+            if (binaryTreePrinter == AnnotationOutputter.DEFAULT_CONSTITUENCY_TREE_PRINTER) {
+              binaryTreePrinter = new TreePrint("oneline");
+            }
+            binaryTreePrinter.printTree(sentence.get(TreeCoreAnnotations.BinarizedTreeAnnotation.class),
+                    new PrintWriter(binaryTreeStrWriter, true));
+            String binaryTreeStr = binaryTreeStrWriter.toString().trim();
+            if (!"SENTENCE_SKIPPED_OR_UNPARSABLE".equals(binaryTreeStr)) {
+              l2.set("binaryParse", binaryTreeStr);
+            }
           }
           // (dependency trees)
           l2.set("basicDependencies", buildDependencyTree(sentence.get(SemanticGraphCoreAnnotations.BasicDependenciesAnnotation.class)));
@@ -139,6 +154,18 @@ public class JSONOutputter extends AnnotationOutputter {
               l3.set("ner", m.get(CoreAnnotations.NamedEntityTagAnnotation.class));
               l3.set("normalizedNER", m.get(CoreAnnotations.NormalizedNamedEntityTagAnnotation.class));
               l3.set("entitylink", m.get(CoreAnnotations.WikipediaEntityAnnotation.class));
+              // add ner confidence info if there is any to report
+              Map<String,Double> nerConfidences = m.get(CoreAnnotations.NamedEntityTagProbsAnnotation.class);
+              List<String> nerLabelsWithConfidences =
+                      nerConfidences.keySet().stream().filter(x -> !x.equals("O")).collect(
+                              Collectors.toList());
+              if (nerLabelsWithConfidences.size() > 0) {
+                l3.set("nerConfidences", (Consumer<Writer>) l4 -> {
+                  for (String nerLabel : nerLabelsWithConfidences) {
+                    l4.set(nerLabel, nerConfidences.get(nerLabel));
+                  }
+                });
+              }
               // Timex
               Timex time = m.get(TimeAnnotations.TimexAnnotation.class);
               writeTime(l3, time);
@@ -155,6 +182,11 @@ public class JSONOutputter extends AnnotationOutputter {
               l3.set("lemma", token.lemma());
               l3.set("characterOffsetBegin", token.beginPosition());
               l3.set("characterOffsetEnd", token.endPosition());
+              if (token.containsKey(CoreAnnotations.CodepointOffsetBeginAnnotation.class) &&
+                  token.containsKey(CoreAnnotations.CodepointOffsetEndAnnotation.class)) {
+                l3.set("codepointOffsetBegin", token.beginPosition());
+                l3.set("codepointOffsetEnd", token.endPosition());
+              }
               l3.set("pos", token.tag());
               l3.set("ner", token.ner());
               l3.set("normalizedNER", token.get(CoreAnnotations.NormalizedNamedEntityTagAnnotation.class));
@@ -260,6 +292,7 @@ public class JSONOutputter extends AnnotationOutputter {
       }
     });
 
+    l0.newline();
     l0.flush();  // flush
   }
 
@@ -296,7 +329,8 @@ public class JSONOutputter extends AnnotationOutputter {
   /**
    * Convert a dependency graph to a format expected as input to {@link Writer#set(String, Object)}.
    */
-  @SuppressWarnings("RedundantCast")  // It's lying; we need the "redundant" casts (as of 2014-09-08)
+  @SuppressWarnings({"RedundantCast", "RedundantSuppression"})
+  // It's lying; we need the "redundant" casts (as of 2014-09-08)
   private static Object buildDependencyTree(SemanticGraph graph) {
     if(graph != null) {
       return Stream.concat(
@@ -356,7 +390,7 @@ public class JSONOutputter extends AnnotationOutputter {
       this.options = options;
     }
 
-    @SuppressWarnings({"unchecked", "UnnecessaryBoxing"})
+    @SuppressWarnings({"unchecked", "UnnecessaryBoxing", "RawUseOfParameterized"})
     private void routeObject(int indent, Object value) {
       if (value instanceof String) {
         // Case: simple string (this is easy!)
@@ -466,9 +500,19 @@ public class JSONOutputter extends AnnotationOutputter {
       } else if (value instanceof Character) {
         writer.write(Character.toString((Character) value));
       } else if (value instanceof Float) {
-        writer.write(new DecimalFormat("0.#######").format(value));
+        // Use the US Locale so that we can conform with json output format
+        // The decimal separator is always supposed to be . for example
+        Locale locale = Locale.US;
+        NumberFormat formatter = NumberFormat.getInstance(locale);
+        formatter.setMaximumFractionDigits(7);
+        formatter.setMinimumFractionDigits(0);
+        writer.write(formatter.format(value));
       } else if (value instanceof Double) {
-        writer.write(new DecimalFormat("0.##############").format(value));
+        Locale locale = Locale.US;
+        NumberFormat formatter = NumberFormat.getInstance(locale);
+        formatter.setMaximumFractionDigits(14);
+        formatter.setMinimumFractionDigits(0);
+        writer.write(formatter.format(value));
       } else if (value instanceof Boolean) {
         writer.write(Boolean.toString((Boolean) value));
       } else if (int.class.isAssignableFrom(value.getClass())) {

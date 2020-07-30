@@ -55,7 +55,13 @@ public class SimpleTensor implements Serializable {
       }
       this.slices[i] = new SimpleMatrix(slices[i]);
     }
+  }
 
+  /**
+   * Copies everything
+   */
+  public SimpleTensor(SimpleTensor other) {
+    this(other.slices);
   }
 
   /**
@@ -65,7 +71,7 @@ public class SimpleTensor implements Serializable {
   public static SimpleTensor random(int numRows, int numCols, int numSlices, double minValue, double maxValue, java.util.Random rand) {
     SimpleTensor tensor = new SimpleTensor(numRows, numCols, numSlices);
     for (int i = 0; i < numSlices; ++i) {
-      tensor.slices[i] = SimpleMatrix.random(numRows, numCols, minValue, maxValue, rand);
+      tensor.slices[i] = SimpleMatrix.random_DDRM(numRows, numCols, minValue, maxValue, rand);
     }
     return tensor;
   }
@@ -100,7 +106,7 @@ public class SimpleTensor implements Serializable {
 
   public void set(double value) {
     for (int slice = 0; slice < numSlices; ++slice) {
-      slices[slice].set(value);
+      slices[slice].fill(value);
     }
   }
 

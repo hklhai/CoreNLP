@@ -223,6 +223,7 @@ public class WordsToSentencesAnnotatorTest {
     Properties props = PropertiesUtils.asProperties(
             "annotators", "tokenize, cleanxml, ssplit",
             "tokenize.language", "en",
+            "tokenize.options", "ptb3Escaping=true",
             "ssplit.newlineIsSentenceBreak", "two",
             "ssplit.boundaryMultiTokenRegex",
             "( /\\*NL\\*/ /\\p{Lu}[-\\p{L}]+/+ /,/ ( /[-\\p{L}]+/+ /,/ )? " +
@@ -261,13 +262,13 @@ public class WordsToSentencesAnnotatorTest {
           };
 
   private static final String[] dateLineSpanishTokens =
-          { "EL CAIRO , 30 jun =LRB= Xinhua =RRB= --",
-                  "MONTEVIDEO , 1 jul =LRB= Xinhua =RRB= --",
-                  "RIO DE JANEIRO , 30 jun =LRB= Xinhua =RRB= --",
-                  "SALVADOR DE BAHIA , Brasil , 30 jun =LRB= Xinhua =RRB= --",
-                  "LA HAYA , 31 dic =LRB= Xinhua =RRB= --",
-                  "JERUSALEN , 1 ene =LRB= Xinhua =RRB= --",
-                  "CANBERRA =LRB= Xinhua =RRB= --",
+          { "EL CAIRO , 30 jun -LRB- Xinhua -RRB- --",
+                  "MONTEVIDEO , 1 jul -LRB- Xinhua -RRB- --",
+                  "RIO DE JANEIRO , 30 jun -LRB- Xinhua -RRB- --",
+                  "SALVADOR DE BAHIA , Brasil , 30 jun -LRB- Xinhua -RRB- --",
+                  "LA HAYA , 31 dic -LRB- Xinhua -RRB- --",
+                  "JERUSALEN , 1 ene -LRB- Xinhua -RRB- --",
+                  "CANBERRA -LRB- Xinhua -RRB- --",
           };
 
   /** Test whether you can separate off a dateline as a separate sentence using ssplit.boundaryMultiTokenRegex. */
@@ -280,7 +281,7 @@ public class WordsToSentencesAnnotatorTest {
             "ssplit.newlineIsSentenceBreak", "two",
             "ssplit.boundaryMultiTokenRegex",
             "/\\*NL\\*/ /\\p{Lu}[-\\p{L}]+/+ ( /,/  /[-\\p{L}]+/+ )? " +
-                    "( /,/ /[1-3]?[0-9]/ /\\p{Ll}{3,3}/ )? /=LRB=/ /\\p{Lu}\\p{L}+/ /=RRB=/ /--/"
+                    "( /,/ /[1-3]?[0-9]/ /\\p{Ll}{3,3}/ )? /-LRB-/ /\\p{Lu}\\p{L}+/ /-RRB-/ /--/"
     );
     StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
 
@@ -290,7 +291,7 @@ public class WordsToSentencesAnnotatorTest {
       pipeline.annotate(document1);
       List<CoreMap> sentences = document1.get(CoreAnnotations.SentencesAnnotation.class);
 
-     assertEquals("For " + dateLineSpanishTexts[i] + " annotation is " + document1, 2, sentences.size());
+      assertEquals("For " + dateLineSpanishTexts[i] + " annotation is " + document1, 2, sentences.size());
 
       List<CoreLabel> sentenceOneTokens = sentences.get(0).get(CoreAnnotations.TokensAnnotation.class);
       String sentenceOne = SentenceUtils.listToString(sentenceOneTokens);
@@ -390,7 +391,7 @@ public class WordsToSentencesAnnotatorTest {
   private static final String[] kbpSpanishSentences = {
           "Muere una persona y 37 resultan heridas en manifestación contra presidente egipcio",
           "Muere una persona y 37 resultan heridas en manifestación contra presidente egipcio",
-          "EL CAIRO , 30 jun =LRB= Xinhua =RRB= --",
+          "EL CAIRO , 30 jun -LRB- Xinhua -RRB- --",
           "Al menos una persona murió y 37 resultaron heridas hoy en un ataque armado lanzado en una protesta contra el presidente de Egipto , Mohamed Morsi , en Beni Suef , al sur de la capital egipcia de El Cairo , informó la agencia estatal de noticias MENA .",
           "Fin",
   };
@@ -408,7 +409,7 @@ public class WordsToSentencesAnnotatorTest {
             "ssplit.tokenPatternsToDiscard", "\\n,\\*NL\\*",
             "ssplit.boundaryMultiTokenRegex",
             "/\\*NL\\*/ /\\p{Lu}[-\\p{L}]+/+ /,/ ( /[-\\p{L}]+/+ /,/ )? " +
-                    "/[1-3]?[0-9]/ /\\p{Ll}{3,5}/ /=LRB=/ /\\p{Lu}\\p{L}+/ /=RRB=/ /--/",
+                    "/[1-3]?[0-9]/ /\\p{Ll}{3,5}/ /-LRB-/ /\\p{Lu}\\p{L}+/ /-RRB-/ /--/",
             "clean.xmltags", "headline|text|post",
             "clean.singlesentencetags", "HEADLINE|AUTHOR",
             "clean.sentenceendingtags", "TEXT|POST|QUOTE",

@@ -91,6 +91,9 @@ public class CorefSystem {
               + (System.currentTimeMillis() - time) / 1000.0 + "s");
         }
         CorefUtils.removeSingletonClusters(document);
+        if (verbose) {
+          CorefUtils.printHumanReadableCoref(document);
+        }
         writerAfterCoref.print(CorefPrinter.printConllOutput(document, false, true));
       }
 

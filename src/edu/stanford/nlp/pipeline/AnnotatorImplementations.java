@@ -22,7 +22,7 @@ import java.util.*;
 public class AnnotatorImplementations  {
 
   /** A logger for this class */
-  private static Redwood.RedwoodChannels log = Redwood.channels(AnnotatorImplementations.class);
+  private static final Redwood.RedwoodChannels log = Redwood.channels(AnnotatorImplementations.class);
 
   /**
    * Tokenize, emulating the Penn Treebank
@@ -43,6 +43,21 @@ public class AnnotatorImplementations  {
    */
   public Annotator wordToSentences(Properties properties) {
     return new WordsToSentencesAnnotator(properties);
+  }
+
+  /**
+   * Multi-word-token, split tokens into words (e.g. "des" in French into "de" and "les")
+   */
+  public Annotator multiWordToken(Properties props) {
+    // MWTAnnotator defaults to using "mwt." as prefix
+    return new MWTAnnotator("", props);
+  }
+
+  /**
+   * Set document date
+   */
+  public Annotator docDate(Properties properties) {
+    return new DocDateAnnotator("docdate", properties);
   }
 
   /**
@@ -237,6 +252,11 @@ public class AnnotatorImplementations  {
   public Annotator dependencies(Properties properties) {
     Properties relevantProperties = PropertiesUtils.extractPrefixedProperties(properties,
         Annotator.STANFORD_DEPENDENCIES + '.');
+    if (!relevantProperties.containsKey("nthreads") &&
+        properties.containsKey("nthreads")) {
+      relevantProperties.setProperty("nthreads", properties.getProperty("nthreads"));
+    }
+
     return new DependencyParseAnnotator(relevantProperties);
   }
 
@@ -262,8 +282,14 @@ public class AnnotatorImplementations  {
    * Annotate quotes and extract them like sentences
    */
   public Annotator quote(Properties properties) {
-    Properties relevantProperties = PropertiesUtils.extractPrefixedProperties(properties,
-        Annotator.STANFORD_QUOTE + '.');
+	Properties relevantProperties = PropertiesUtils.extractPrefixedProperties(properties,
+	    Annotator.STANFORD_QUOTE + '.', true);
+	Properties depparseProperties = PropertiesUtils.extractPrefixedProperties(properties,
+	    Annotator.STANFORD_DEPENDENCIES + '.');
+	for (String key: depparseProperties.stringPropertyNames())  {
+	    relevantProperties.setProperty("quote.attribution." + Annotator.STANFORD_DEPENDENCIES + '.' + key,
+		depparseProperties.getProperty(key));
+		}
     return new QuoteAnnotator(relevantProperties);
   }
 

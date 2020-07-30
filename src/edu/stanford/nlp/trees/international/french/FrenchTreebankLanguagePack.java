@@ -22,14 +22,15 @@ public class FrenchTreebankLanguagePack extends AbstractTreebankLanguagePack {
   //the current FrenchTreebankParserParams is currently configured to
   //read UTF-8, PTB style trees that have been extracted from the XML
   //files.
-  public static final String FTB_ENCODING = "ISO8859_1";
+  public static final String FTB_ENCODING = "UTF-8";
 
   //The raw treebank uses "PONCT". Change to LDC convention.
   private static final String[] frenchPunctTags = {"PUNC"};
 
   private static final String[] frenchSFPunctTags = {"PUNC"};
 
-  private static final String[] frenchPunctWords = {"=","*","/","\\","]","[","\"","''", "'", "``", "`", "-LRB-", "-RRB-", "-LCB-", "-RCB-", ".", "?", "!", ",", ":", "-", "--", "...", ";", "&quot;"};
+  // new tokenizers should return (), old tokenizers return -LRB- -RRB-.  so we anticipate both
+  private static final String[] frenchPunctWords = {"=","*","/","\\","]","[","\"","''", "'", "``", "`", "-LRB-", "-RRB-", "(", ")", "-LCB-", "-RCB-", ".", "?", "!", ",", ":", "-", "--", "...", ";", "&quot;"};
 
   private static final String[] frenchSFPunctWords = {".", "!", "?"};
 
@@ -86,6 +87,7 @@ public class FrenchTreebankLanguagePack extends AbstractTreebankLanguagePack {
    *
    * @return The sentence final punctuation tags
    */
+  @Override
   public String[] sentenceFinalPunctuationWords() {
     return frenchSFPunctWords;
   }
@@ -121,16 +123,19 @@ public class FrenchTreebankLanguagePack extends AbstractTreebankLanguagePack {
   /**
    * Returns the extension of treebank files for this treebank.
    */
+  @Override
   public String treebankFileExtension() {
     return "xml";
   }
 
   /** {@inheritDoc} */
+  @Override
   public HeadFinder headFinder() {
     return new FrenchHeadFinder(this);
   }
   
   /** {@inheritDoc} */
+  @Override
   public HeadFinder typedDependencyHeadFinder() {
     return new FrenchHeadFinder(this);
   }

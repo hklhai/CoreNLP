@@ -10,7 +10,7 @@ import edu.stanford.nlp.util.Generics;
  * In general, if a method is operating on a pair of Distribution objects, we imagine that the
  * set of possible keys for each Distribution is the same.
  * Therefore we require that d1.numberOFKeys = d2.numberOfKeys and that the number of keys in the union
- * of the two key sets <= numKeys
+ * of the two key sets &lt;= numKeys
  *
  *
  * @author Jeff Michels (jmichels@stanford.edu)
@@ -83,6 +83,8 @@ public class Distributions {
     return weightedAverage(d1, 0.5, d2);
   }
 
+  /** we will multiply by this constant instead of divide by log(2) */
+  private static final double LN_TO_LOG2 = 1. / Math.log(2);
 
   /**
    * Calculates the KL divergence between the two distributions.
@@ -98,7 +100,6 @@ public class Distributions {
     double result = 0.0;
     double assignedMass1 = 0.0;
     double assignedMass2 = 0.0;
-    double log2 = Math.log(2.0);
     double p1, p2;
     double epsilon = 1e-10;
 
@@ -117,7 +118,7 @@ public class Distributions {
         System.out.flush();
         return Double.POSITIVE_INFINITY; // can't recover
       }
-      result += p1 * (logFract / log2); // express it in log base 2
+      result += p1 * logFract * LN_TO_LOG2; // express it in log base 2
     }
 
     if (numKeysRemaining != 0){
@@ -130,7 +131,7 @@ public class Distributions {
           System.out.flush();
           return Double.POSITIVE_INFINITY; // can't recover
         }
-        result += numKeysRemaining * p1 * (logFract / log2); // express it in log base 2
+        result += numKeysRemaining * p1 * logFract * LN_TO_LOG2; // express it in log base 2
       }
     }
     return result;

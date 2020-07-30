@@ -57,23 +57,19 @@ public class CRFBiasedClassifier<IN extends CoreMap> extends CRFClassifier<IN>  
   public CRFBiasedClassifier(SeqClassifierFlags flags) {super(flags); }
 
   @Override
-  public CRFDatum<List<String>, CRFLabel> makeDatum(List<IN> info, int loc, List<FeatureFactory<IN>> featureFactories) {
+  public CRFDatum<Collection<String>, CRFLabel> makeDatum(List<IN> info, int loc, List<FeatureFactory<IN>> featureFactories) {
 
     pad.set(CoreAnnotations.AnswerAnnotation.class, flags.backgroundSymbol);
     PaddedList<IN> pInfo = new PaddedList<>(info, pad);
 
-    List<List<String>> features = new ArrayList<>();
-    Collection<Clique> done = Generics.newHashSet();
+    List<Collection<String>> features = new ArrayList<>();
     for (int i = 0; i < windowSize; i++) {
       List<String> featuresC = new ArrayList<>();
-      List<Clique> windowCliques = FeatureFactory.getCliques(i, 0);
-      windowCliques.removeAll(done);
-      done.addAll(windowCliques);
-      for (Clique c : windowCliques) {
+      FeatureFactory.eachClique(i, 0, c -> {
         for (FeatureFactory<IN> featureFactory : featureFactories) {
           featuresC.addAll(featureFactory.getCliqueFeatures(pInfo, loc, c));
         }
-      }
+      });
       if (testTime && i==0) {
         // this feature is only present at test time and only appears
         // in cliques of size 1 (i.e., cliques with window=0)
@@ -94,9 +90,9 @@ public class CRFBiasedClassifier<IN extends CoreMap> extends CRFClassifier<IN>  
   private void addBiasFeature() {
     if ( ! featureIndex.contains(BIAS)) {
       featureIndex.add(BIAS);
-      double[][] newWeights = new double[weights.length+1][];
-      System.arraycopy (weights,0,newWeights,0,weights.length);
-      newWeights[weights.length] = new double[classIndex.size()];
+      float[][] newWeights = new float[weights.length+1][];
+      System.arraycopy(weights,0,newWeights,0,weights.length);
+      newWeights[weights.length] = new float[classIndex.size()];
       weights = newWeights;
     }
   }
@@ -109,7 +105,7 @@ public class CRFBiasedClassifier<IN extends CoreMap> extends CRFClassifier<IN>  
   public void setBiasWeight(int cindex, double weight) {
     addBiasFeature();
     int fi = featureIndex.indexOf(BIAS);
-    weights[fi][cindex] = weight;
+    weights[fi][cindex] = (float) weight;
   }
 
   @Override

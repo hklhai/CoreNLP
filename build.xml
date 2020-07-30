@@ -143,7 +143,8 @@
   <target name="test" depends="classpath,compile"
           description="Run core unit tests">
     <echo message="${ant.project.name}" />
-    <junit fork="true" maxmemory="1g" printsummary="off" outputtoformatters="false" forkmode="perBatch" haltonfailure="true">
+    <junit fork="true" maxmemory="1g" printsummary="off" outputtoformatters="false" forkmode="perBatch" haltonfailure="no" 
+        haltonerror="no" failureproperty="test.failed" errorproperty="test.failed">
       <classpath refid="classpath"/>
       <classpath path="${build.path}"/>
       <classpath path="${data.path}"/>
@@ -155,12 +156,14 @@
         </fileset>
       </batchtest>
     </junit>
+    <fail message="Test error or failure detected, check test results." if="test.failed" />
   </target>
 
   <target name="itest" depends="classpath,compile"
           description="Run core integration tests">
     <echo message="${ant.project.name}" />
-    <junit fork="yes" maxmemory="12g" printsummary="off" outputtoformatters="false" forkmode="perTest" haltonfailure="true">
+    <junit fork="yes" maxmemory="12g" printsummary="off" outputtoformatters="false" forkmode="perTest" haltonfailure="no"
+           haltonerror="no" failureproperty="test.failed" errorproperty="test.failed">
       <classpath refid="classpath"/>
       <classpath path="${build.path}"/>
       <classpath path="${data.path}"/>
@@ -170,6 +173,146 @@
         <fileset dir="${itests.path}">
           <include name="**/*ITest*.java"/>
           <exclude name="**/*SlowITest*.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+    <fail message="Test error or failure detected, check test results." if="test.failed" />
+  </target>
+
+  <target name="itest-many-docs" depends="classpath"
+          description="Run StanfordCoreNLP on a large volume of documents.">
+    <echo message="${ant.project.name}" />
+    <junit fork="yes" maxmemory="14g" printsummary="off" outputtoformatters="false" forkmode="perTest" haltonfailure="no" 
+        haltonerror="no" failureproperty="test.failed" errorproperty="test.failed">
+      <classpath refid="classpath"/>
+      <classpath path="${build.path}"/>
+      <classpath path="${data.path}"/>
+      <classpath path="${source.path}"/>
+      <formatter type="brief" usefile="false"/>
+      <batchtest fork="yes">
+        <fileset dir="${itests.path}">
+          <include name="**/*StanfordCoreNLPSlowITest.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+    <fail message="Test error or failure detected, check test results." if="test.failed" />
+  </target>
+  
+  <target name="itest-coreference" depends="classpath"
+          description="Coreference related slow itests.">
+    <echo message="${ant.project.name}" />
+    <junit fork="yes" maxmemory="7g" printsummary="off" outputtoformatters="false" forkmode="perTest" haltonfailure="no" 
+        haltonerror="no" failureproperty="test.failed" errorproperty="test.failed">
+      <classpath refid="classpath"/>
+      <classpath path="${build.path}"/>
+      <classpath path="${data.path}"/>
+      <classpath path="${source.path}"/>
+      <formatter type="brief" usefile="false"/>
+      <batchtest fork="yes">
+        <fileset dir="${itests.path}">
+          <include name="**/*Coref*SlowITest.java"/>
+          <include name="**/DcorefBenchmarkSlowITest.java"/>
+          <include name="**/DcorefSlowITest.java"/>
+          <include name="**/ChineseCorefBenchmarkSlowITest.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+    <fail message="Test error or failure detected, check test results." if="test.failed" />
+  </target>
+  
+  <target name="itest-protobuf" depends="classpath"
+          description="Protocol buffer related slow itests.">
+    <echo message="${ant.project.name}" />
+    <junit fork="yes" maxmemory="14g" printsummary="off" outputtoformatters="false" forkmode="perTest" haltonfailure="no" 
+        haltonerror="no" failureproperty="test.failed" errorproperty="test.failed">
+      <classpath refid="classpath"/>
+      <classpath path="${build.path}"/>
+      <classpath path="${data.path}"/>
+      <classpath path="${source.path}"/>
+      <formatter type="brief" usefile="false"/>
+      <batchtest fork="yes">
+        <fileset dir="${itests.path}">
+          <include name="**/*Protobuf*SlowITest.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+    <fail message="Test error or failure detected, check test results." if="test.failed" />
+  </target>
+  
+  <target name="itest-kbp" depends="classpath"
+          description="KBP related slow itests.">
+    <echo message="${ant.project.name}" />
+    <junit fork="yes" maxmemory="14g" printsummary="off" outputtoformatters="false" forkmode="perTest" haltonfailure="no" 
+        haltonerror="no" failureproperty="test.failed" errorproperty="test.failed">
+      <classpath refid="classpath"/>
+      <classpath path="${build.path}"/>
+      <classpath path="${data.path}"/>
+      <classpath path="${source.path}"/>
+      <formatter type="brief" usefile="false"/>
+      <batchtest fork="yes">
+        <fileset dir="${itests.path}">
+          <include name="**/*KBP*SlowITest.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+    <fail message="Test error or failure detected, check test results." if="test.failed" />
+  </target>
+  
+  <target name="itest-ner" depends="classpath"
+          description="NER related slow itests">
+    <echo message="${ant.project.name}" />
+    <junit fork="yes" maxmemory="14g" printsummary="off" outputtoformatters="false" forkmode="perTest" haltonfailure="no" 
+        haltonerror="no" failureproperty="test.failed" errorproperty="test.failed">
+      <classpath refid="classpath"/>
+      <classpath path="${build.path}"/>
+      <classpath path="${data.path}"/>
+      <classpath path="${source.path}"/>
+      <formatter type="brief" usefile="false"/>
+      <batchtest fork="yes">
+        <fileset dir="${itests.path}">
+          <include name="**/NERBenchmark*SlowITest.java"/>
+          <include name="**/TrainCRFClassifierSlowITest.java"/>
+          <include name="**/NERPipelineEndToEndSlowITest.java"/>
+          <include name="**/NERTokenizationSlowITest.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+    <fail message="Test error or failure detected, check test results." if="test.failed" />
+  </target>
+  
+  <target name="itest-misc" depends="classpath"
+          description="Other assorted slow itests">
+    <echo message="${ant.project.name}" />
+    <junit fork="yes" maxmemory="14g" printsummary="off" outputtoformatters="false" forkmode="perTest" haltonfailure="no" 
+        haltonerror="no" failureproperty="test.failed" errorproperty="test.failed">
+      <classpath refid="classpath"/>
+      <classpath path="${build.path}"/>
+      <classpath path="${data.path}"/>
+      <classpath path="${source.path}"/>
+      <formatter type="brief" usefile="false"/>
+      <batchtest fork="yes">
+        <fileset dir="${itests.path}">
+          <include name="**/RequirementsCorrectSlowITest.java"/>
+          <include name="**/ThreadedParserSlowITest.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+    <fail message="Test error or failure detected, check test results." if="test.failed" />
+  </target>
+  
+  <target name="itest-debug" depends="classpath"
+           description="target for debug purposes">
+    <echo message="${ant.project.name}" />
+    <junit fork="yes" maxmemory="14g" printsummary="off" outputtoformatters="false" forkmode="perTest" haltonfailure="no" 
+        haltonerror="no" failureproperty="test.failed" errorproperty="test.failed">
+      <classpath refid="classpath"/>
+      <classpath path="${build.path}"/>
+      <classpath path="${data.path}"/>
+      <classpath path="${source.path}"/>
+      <formatter type="brief" usefile="false"/>
+      <batchtest fork="yes">
+        <fileset dir="${itests.path}">
+          <include name="**/HeidelTimeKBPAnnotatorITest.java"/>
         </fileset>
       </batchtest>
     </junit>
@@ -426,7 +569,7 @@
       <zipfileset prefix="WEB-INF/data/models"
                   file="/u/nlp/data/ner/goodClassifiers/english.muc.7class.distsim.crf.ser.gz"/>
       <zipfileset prefix="WEB-INF/data/models"
-                  file="/u/nlp/data/ner/goodClassifiers/german.hgc_175m_600.crf.ser.gz"/>
+                  file="/u/nlp/data/ner/goodClassifiers/german.distsim.crf.ser.gz"/>
       <zipfileset prefix="WEB-INF/data/models"
                   file="/u/nlp/data/ner/goodClassifiers/chinese.misc.distsim.crf.ser.gz"/>
       <zipfileset file="${data.path}/webapps/favicon.ico"/>

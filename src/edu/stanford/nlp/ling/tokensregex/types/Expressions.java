@@ -24,10 +24,11 @@ import java.util.regex.Pattern;
  *   Expressions are made up of identifiers, literals (numbers, strings "I'm a string", TRUE, FALSE),
  *     function calls ( FUNC(args) ).
  *
- * <p>
+ * <br>
  * After a pattern has been matched, we can access the capture groups using one of the following methods:
- * <p>
+ * <br>
  * <table>
+ * <caption>Capture group methods</caption>
  *   <tr><th>Field</th><th>Description</th></tr>
  *   <tr><th colspan="2">Accessing captured groups as list of tokens</th></tr>
  *   <tr><td>$n</td><td>Capture group (as list of tokens) corresponding to the variable {@code $n}.
@@ -53,6 +54,7 @@ import java.util.regex.Pattern;
  * <p>
  *   The following functions are supported:
  * <table>
+ * <caption>Supported functions</caption>
  *   <tr><th>Function</th><th>Description</th></tr>
  *   <tr><td>{@code Annotate(CoreMap, field, value)}</td><td>Annotates the CoreMap with specified field=value</td></tr>
  *   <tr><td>{@code Aggregate(function, initialValue,...)}</td><td>Aggregates values using function (like fold)</td></tr>
@@ -69,7 +71,7 @@ import java.util.regex.Pattern;
  *   <tr><th colspan="2">Accessor functions</th></tr>
  *   <tr><td>{@code Map(list,function)}</td><td>Returns a new list that is the result of applying the function on every element of the List</td></tr>
  *   <tr><td>{@code Keys(map)}</td><td>Returns list of keys for the given map</td></tr>
- *   <tr><td><{@code Set(object or map, fieldname, value)}<br>{@code Set(list,index,value)}}</td><td>Set the field to the specified value</td></tr>
+ *   <tr><td>{@code Set(object or map, fieldname, value)}<br>{@code Set(list,index,value)}</td><td>Set the field to the specified value</td></tr>
  *   <tr><td>{@code Get(object or map, fieldname) or object.fieldname <br>Get(list,index) or list[index]}</td><td>Returns the value of the specified field</td></tr>
  *   <tr><th colspan="2">String functions</th></tr>
  *   <tr><td>{@code Format(format,arg1,arg2,...)}</td><td>Returns formatted string</td></tr>
@@ -1113,7 +1115,17 @@ public class Expressions  {
         }
       }
       try {
-        Object res = method.invoke(mainObj, objs);
+        Object res;
+        if (mainObj instanceof MatchResult && method.getName().equals("group")
+                && objs.length == 1 && objs[0] instanceof Integer) {
+          // handle case of calling MatchResult's group(int group) method
+          // this requires casting the mainObj to a MatchResult post Java 8 because
+          // Matcher's toMatchResult() now returns a Matcher$ImmutableMatchResult
+          res = ((MatchResult) mainObj).group((Integer) objs[0]);
+        } else {
+          // handle all other cases
+          res = method.invoke(mainObj, objs);
+        }
         return new PrimitiveValue<>(function, res);
       } catch (InvocationTargetException | IllegalAccessException ex) {
         throw new RuntimeException("Cannot evaluate method " + function + " on object " + mainObj, ex);

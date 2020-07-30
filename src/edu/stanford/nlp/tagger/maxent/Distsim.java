@@ -2,6 +2,7 @@ package edu.stanford.nlp.tagger.maxent;
 
 import edu.stanford.nlp.objectbank.ObjectBank;
 import edu.stanford.nlp.util.Generics;
+import edu.stanford.nlp.util.Interner;
 import edu.stanford.nlp.util.Timing;
 import edu.stanford.nlp.util.logging.Redwood;
 
@@ -15,6 +16,8 @@ import java.util.regex.Pattern;
  * Keeps track of a distributional similarity mapping, i.e., a map from
  * word to class.  Returns strings to save time, since that is how the
  * results are used in the tagger.
+ * <p>
+ * <i>Implementation note: This class largely overlaps DistSimClassifier. Unify?</i>
  */
 public class Distsim implements Serializable {
 
@@ -53,6 +56,11 @@ public class Distsim implements Serializable {
       }
     }
 
+    // should work better than String.intern()
+    // interning the strings like this means they should be serialized
+    // in an interned manner, saving disk space and also memory when
+    // loading them back in
+    Interner<String> interner = new Interner<>();
     lexicon = Generics.newHashMap();
     // todo [cdm 2016]: Note that this loads file with default file encoding rather than specifying it
     for (String word : ObjectBank.getLineIterator(new File(filename))) {
@@ -61,14 +69,10 @@ public class Distsim implements Serializable {
       if ( ! casedDistSim) {
         w = w.toLowerCase();
       }
-      lexicon.put(w, bits[1]);
+      lexicon.put(w, interner.intern(bits[1]));
     }
 
-    if (lexicon.containsKey("<unk>")) {
-      unk = lexicon.get("<unk>");
-    } else {
-      unk = "null";
-    }
+    unk = lexicon.getOrDefault("<unk>", "null");
   }
 
   public static Distsim initLexicon(String path) {
@@ -92,12 +96,15 @@ public class Distsim implements Serializable {
    * returned ("null" if no other unknown word was specified).
    */
   public String getMapping(String word) {
-    String distSim = lexicon.get(word.toLowerCase());
+    if ( ! casedDistSim) {
+      word = word.toLowerCase();
+    }
+    String distSim = lexicon.get(word);
 
     if (distSim == null && mapdigits) {
       Matcher matcher = digits.matcher(word);
       if (matcher.find()) {
-        distSim = lexicon.get(matcher.replaceAll("0"));
+        distSim = lexicon.get(matcher.replaceAll("9"));
       }
     }
 

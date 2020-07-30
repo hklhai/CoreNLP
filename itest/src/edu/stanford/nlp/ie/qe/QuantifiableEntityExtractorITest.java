@@ -1,28 +1,38 @@
 package edu.stanford.nlp.ie.qe;
 
-import edu.stanford.nlp.ling.tokensregex.MatchedExpression;
-import edu.stanford.nlp.pipeline.*;
-import junit.framework.TestCase;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.util.List;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import edu.stanford.nlp.ling.tokensregex.MatchedExpression;
+import edu.stanford.nlp.pipeline.Annotation;
+import edu.stanford.nlp.pipeline.AnnotationPipeline;
+import edu.stanford.nlp.pipeline.DefaultPaths;
+import edu.stanford.nlp.pipeline.POSTaggerAnnotator;
+import edu.stanford.nlp.pipeline.TokenizerAnnotator;
+import edu.stanford.nlp.pipeline.WordsToSentencesAnnotator;
 
 /**
  * Test for quantifiable entity extractor.
  *
  * @author Angel Chang
  */
-public class QuantifiableEntityExtractorITest extends TestCase {
+public class QuantifiableEntityExtractorITest {
 
   private static AnnotationPipeline pipeline; // = null;
   private static QuantifiableEntityExtractor extractor; // = null;
 
+  @Test
   public void test() throws Exception {
     // TODO: Enable tests after rules files are added to models
   }
 
-  @Override
+  @Before
   public void setUp() throws Exception {
-    super.setUp();
     synchronized(QuantifiableEntityExtractorITest.class) {
       if (pipeline == null) {
         pipeline = new AnnotationPipeline();
@@ -54,7 +64,7 @@ public class QuantifiableEntityExtractorITest extends TestCase {
     }
   }
 
-  private static void runAndCheck(String prefix, String[] sentences, ExpectedQuantity[][] expected) throws Exception {
+  private static void runAndCheck(String prefix, String[] sentences, ExpectedQuantity[][] expected) {
     for (int si = 0; si < sentences.length; si++) {
       String sentence = sentences[si];
       Annotation annotation = createDocument(sentence);
@@ -67,7 +77,7 @@ public class QuantifiableEntityExtractorITest extends TestCase {
           Object value = matchedExpression.getValue();
           System.out.println(prefix + ": Got expression " + text + " with value " + value);
         }
-        assertTrue(prefix + ": No expected provided", false);
+        fail(prefix + ": No expected provided");
       } else {
         int minMatchable = Math.min(expected[si].length, matchedExpressions.size());
         for (int i = 0; i < minMatchable; i++) {
@@ -97,7 +107,7 @@ public class QuantifiableEntityExtractorITest extends TestCase {
     runAndCheck("testMoney", sentences, expected);
   }
 
-  public static void _testLength() throws Exception {
+  public static void _testLength() {
     String[] sentences = {
         "We are 2 kilometer away.",
         "We are 2 kilometers away.",
@@ -121,7 +131,7 @@ public class QuantifiableEntityExtractorITest extends TestCase {
 
   // We do weight instead of mass since in typical natural language
   //  kilograms are used to refer to weight vs mass (in scientific usage)
-  public static void _testWeight() throws Exception {
+  public static void _testWeight() {
     String[] sentences = {
         "The ball is 2 kilograms in weight.",
         "There are five grams.",

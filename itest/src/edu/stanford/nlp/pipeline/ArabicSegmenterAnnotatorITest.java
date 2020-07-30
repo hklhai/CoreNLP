@@ -1,17 +1,20 @@
 package edu.stanford.nlp.pipeline;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 import java.util.Properties;
 
+import org.junit.Before;
+import org.junit.Test;
+
 import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 import edu.stanford.nlp.ling.CoreLabel;
 
-public class ArabicSegmenterAnnotatorITest extends TestCase {
+public class ArabicSegmenterAnnotatorITest {
   StanfordCoreNLP pipeline = null;
 
-  @Override
+  @Before
   public void setUp()
     throws Exception
   {
@@ -25,11 +28,8 @@ public class ArabicSegmenterAnnotatorITest extends TestCase {
     pipeline = new StanfordCoreNLP(props);
   }
 
-  public void testPipeline() {
-    String query = "وما هي كلمتُك المفضلة للدراسة؟";
-    String[] expectedWords = {"و", "ما", "هي", "كلمة", "ك", "المفضلة", "ل", "الدراسة", "?"};
-    int[] expectedStartPositions = {0, 1, 4, 7, 12, 14, 22, 23, 29};
-    int[] expectedEndPositions = {1, 3, 6, 11, 13, 21, 23, 29, 30};
+  public void runTest(String query, String[] expectedWords,
+                      int[] expectedStartPositions, int[] expectedEndPositions) {
     Annotation annotation = new Annotation(query);
     pipeline.annotate(annotation);
 
@@ -40,5 +40,24 @@ public class ArabicSegmenterAnnotatorITest extends TestCase {
       assertEquals(expectedStartPositions[i], tokens.get(i).beginPosition());
       assertEquals(expectedEndPositions[i], tokens.get(i).endPosition());
     }
+  }
+
+  @Test
+  public void testPipeline() {
+    String query = "وما هي كلمتُك المفضلة للدراسة؟";
+    String[] expectedWords = {"و", "ما", "هي", "كلمة", "ك", "المفضلة", "ل", "الدراسة", "?"};
+    int[] expectedStartPositions = {0, 1, 4, 7, 12, 14, 22, 23, 29};
+    int[] expectedEndPositions = {1, 3, 6, 11, 13, 21, 23, 29, 30};
+    runTest(query, expectedWords, expectedStartPositions, expectedEndPositions);
+  }
+
+  @Test
+  public void testParens() {
+    // the Arabic segmenter shouldn't convert parents to -LRB- -RRB-
+    String query = "( )";
+    String[] expectedWords = {"(", ")"};
+    int[] expectedStartPositions = {0, 2};
+    int[] expectedEndPositions = {1, 3};
+    runTest(query, expectedWords, expectedStartPositions, expectedEndPositions);
   }
 }

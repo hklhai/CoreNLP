@@ -30,12 +30,12 @@ import edu.stanford.nlp.util.Pair;
  * To run this script, run with an input file, an output file, and a
  * number of trees specified.
  * <br>
- * A more complete example is as following:
- * <code><pre>
+ * A more complete example is as follows:
+ * <pre>
 
 # This grammar produces trees that look like
-# (S A (V B C)) -> (S X (V Y Z))
-# (S D E F) -> (S X Y Z)
+# (S A (V B C)) -&gt; (S X (V Y Z))
+# (S D E F) -&gt; (S X Y Z)
 
 nonterminals
 ROOT S
@@ -52,16 +52,16 @@ E egret emu estuary
 F finch flock finglonger
 
 tsurgeon
-S << /A|D/=n1 << /B|E/=n2 << /C|F/=n3
+S &lt;&lt; /A|D/=n1 &lt;&lt; /B|E/=n2 &lt;&lt; /C|F/=n3
 
 relabel n1 X
 relabel n2 Y
 relabel n3 Z
 
-</pre></code>
+</pre>
  *
  * <br>
- * You then run the problem with
+ * You then run the program with
  * <br>
  * <code>java edu.stanford.nlp.trees.GenerateTrees input.txt output.txt 100</code>
  *

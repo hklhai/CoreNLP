@@ -86,6 +86,8 @@ public interface Annotator {
   String STANFORD_TOKENIZE = "tokenize";
   String STANFORD_CLEAN_XML = "cleanxml";
   String STANFORD_SSPLIT = "ssplit";
+  String STANFORD_MWT = "mwt";
+  String STANFORD_DOCDATE = "docdate";
   String STANFORD_POS = "pos";
   String STANFORD_LEMMA = "lemma";
   String STANFORD_NER = "ner";
@@ -122,6 +124,8 @@ public interface Annotator {
     put(STANFORD_TOKENIZE,                 new LinkedHashSet<>(Arrays.asList()));
     put(STANFORD_CLEAN_XML,                new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE)));
     put(STANFORD_SSPLIT,                   new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE)));
+    put(STANFORD_MWT,                      new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT)));
+    put(STANFORD_DOCDATE,                  new LinkedHashSet<>(Arrays.asList()));
     put(STANFORD_POS,                      new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT)));
     put(STANFORD_LEMMA,                    new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS)));
     put(STANFORD_NER,                      new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_LEMMA)));
@@ -140,11 +144,15 @@ public interface Annotator {
     put(STANFORD_DEPENDENCIES,             new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS)));
     put(STANFORD_NATLOG,                   new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_LEMMA, STANFORD_DEPENDENCIES)));
     put(STANFORD_OPENIE,                   new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_LEMMA, STANFORD_DEPENDENCIES, STANFORD_NATLOG)));
-    put(STANFORD_QUOTE,                    new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_LEMMA, STANFORD_NER)));
+    put(STANFORD_QUOTE,                    new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_LEMMA, STANFORD_NER, STANFORD_COREF)));
     put(STANFORD_QUOTE_ATTRIBUTION,        new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_LEMMA, STANFORD_NER, STANFORD_COREF_MENTION, STANFORD_DEPENDENCIES, STANFORD_QUOTE)));
     put(STANFORD_UD_FEATURES,              new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_DEPENDENCIES)));
     put(STANFORD_LINK,                     new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_DEPENDENCIES, STANFORD_LEMMA, STANFORD_NER, STANFORD_ENTITY_MENTIONS)));
-    put(STANFORD_KBP,                      new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_DEPENDENCIES, STANFORD_LEMMA, STANFORD_NER, STANFORD_COREF)));
+    // TODO: there are language specific dependencies which we may
+    // want to encode somehow.  For example, English KBP needs coref
+    // to function.  Spanish KBP doesn't need coref, and in fact,
+    // Spanish coref doesn't even exist.
+    put(STANFORD_KBP,                      new LinkedHashSet<>(Arrays.asList(STANFORD_TOKENIZE, STANFORD_SSPLIT, STANFORD_POS, STANFORD_DEPENDENCIES, STANFORD_LEMMA, STANFORD_NER)));
   }};
 
 }

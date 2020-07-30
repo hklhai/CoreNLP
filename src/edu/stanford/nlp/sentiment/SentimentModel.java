@@ -1,4 +1,4 @@
-package edu.stanford.nlp.sentiment; 
+package edu.stanford.nlp.sentiment;
 import edu.stanford.nlp.util.logging.Redwood;
 
 import java.io.Serializable;
@@ -18,8 +18,12 @@ import edu.stanford.nlp.neural.SimpleTensor;
 import edu.stanford.nlp.trees.Tree;
 import edu.stanford.nlp.util.Generics;
 import edu.stanford.nlp.util.Pair;
+import edu.stanford.nlp.util.Timing;
 import edu.stanford.nlp.util.TwoDimensionalMap;
 import edu.stanford.nlp.util.TwoDimensionalSet;
+
+// TODO: remove when EJML is fixed
+import java.io.ObjectInputStream;
 
 public class SentimentModel implements Serializable  {
 
@@ -48,7 +52,7 @@ public class SentimentModel implements Serializable  {
   /**
    * Map from vocabulary words to word vectors.
    *
-   * @see #getWordVector(String) 
+   * @see #getWordVector(String)
    */
   public Map<String, SimpleMatrix> wordVectors;
 
@@ -99,7 +103,42 @@ public class SentimentModel implements Serializable  {
   /**
    * Will store various options specific to this model
    */
-  final RNNOptions op;
+  public final RNNOptions op;
+
+  /*
+  private void writeObject(ObjectOutputStream out)
+    throws IOException
+  {
+    Function<SimpleMatrix, List<List<Double>>> f = (SimpleMatrix x) -> ConvertSimpleMatrix.fromMatrix(x);
+    out.writeObject(binaryTransform.transform(f));
+    out.writeObject(binaryTensors);
+    out.writeObject(binaryClassification.transform(f));
+
+    Map<String, List<List<Double>>> transformed = Generics.newTreeMap();
+    for (String k : unaryClassification.keySet()) {
+      transformed.put(k, f.apply(unaryClassification.get(k)));
+    }
+    out.writeObject(transformed);
+
+    transformed = Generics.newTreeMap();
+    for (String k : wordVectors.keySet()) {
+      transformed.put(k, f.apply(wordVectors.get(k)));
+    }
+    out.writeObject(transformed);
+
+    out.writeInt(numClasses);
+    out.writeInt(numHid);
+    out.writeInt(numBinaryMatrices);
+    out.writeInt(binaryTransformSize);
+    out.writeInt(binaryTensorSize);
+    out.writeInt(binaryClassificationSize);
+    out.writeInt(numUnaryMatrices);
+    out.writeInt(unaryClassificationSize);
+
+    out.writeObject(rand);
+    out.writeObject(op);
+  }
+  */
 
   /*
   // An example of how you could read in old models with readObject to fix the serialization
@@ -107,69 +146,62 @@ public class SentimentModel implements Serializable  {
   private void readObject(ObjectInputStream in)
     throws IOException, ClassNotFoundException
   {
-    ObjectInputStream.GetField fields = in.readFields();
-    binaryTransform = ErasureUtils.uncheckedCast(fields.get("binaryTransform", null));
+    // could use a GetField if needed
+    // ObjectInputStream.GetField fields = in.readFields();
 
-    // transform binaryTensors
-    binaryTensors = TwoDimensionalMap.treeMap();
-    TwoDimensionalMap<String, String, edu.stanford.nlp.rnn.SimpleTensor> oldTensors = ErasureUtils.uncheckedCast(fields.get("binaryTensors", null));
-    for (String first : oldTensors.firstKeySet()) {
-      for (String second : oldTensors.get(first).keySet()) {
-        binaryTensors.put(first, second, new SimpleTensor(oldTensors.get(first, second).slices));
-      }
+    Function<List<List<Double>>, SimpleMatrix> f = (List<List<Double>> x) -> ConvertSimpleMatrix.fromArray(x);
+    TwoDimensionalMap<String, String, List<List<Double>>> raw = ErasureUtils.uncheckedCast(in.readObject());
+    binaryTransform = raw.transform(f);
+    binaryTensors = ErasureUtils.uncheckedCast(in.readObject());
+    raw = ErasureUtils.uncheckedCast(in.readObject());
+    binaryClassification = raw.transform(f);
+
+    Map<String, List<List<Double>>> rawMap = ErasureUtils.uncheckedCast(in.readObject());
+    unaryClassification = Generics.newTreeMap();
+    for (String k : rawMap.keySet()) {
+      unaryClassification.put(k, f.apply(rawMap.get(k)));
     }
 
-    binaryClassification = ErasureUtils.uncheckedCast(fields.get("binaryClassification", null));
-    unaryClassification = ErasureUtils.uncheckedCast(fields.get("unaryClassification", null));
-    wordVectors = ErasureUtils.uncheckedCast(fields.get("wordVectors", null));
-
-    if (fields.defaulted("numClasses")) {
-      throw new RuntimeException();
+    rawMap = ErasureUtils.uncheckedCast(in.readObject());
+    wordVectors = Generics.newTreeMap();
+    for (String k : rawMap.keySet()) {
+      wordVectors.put(k, f.apply(rawMap.get(k)));
     }
-    numClasses = fields.get("numClasses", 0);
 
-    if (fields.defaulted("numHid")) {
-      throw new RuntimeException();
-    }
-    numHid = fields.get("numHid", 0);
+    numClasses = in.readInt();
+    numHid = in.readInt();
+    numBinaryMatrices = in.readInt();
+    binaryTransformSize = in.readInt();
+    binaryTensorSize = in.readInt();
+    binaryClassificationSize = in.readInt();
+    numUnaryMatrices = in.readInt();
+    unaryClassificationSize = in.readInt();
 
-    if (fields.defaulted("numBinaryMatrices")) {
-      throw new RuntimeException();
-    }
-    numBinaryMatrices = fields.get("numBinaryMatrices", 0);
-
-    if (fields.defaulted("binaryTransformSize")) {
-      throw new RuntimeException();
-    }
-    binaryTransformSize = fields.get("binaryTransformSize", 0);
-
-    if (fields.defaulted("binaryTensorSize")) {
-      throw new RuntimeException();
-    }
-    binaryTensorSize = fields.get("binaryTensorSize", 0);
-
-    if (fields.defaulted("binaryClassificationSize")) {
-      throw new RuntimeException();
-    }
-    binaryClassificationSize = fields.get("binaryClassificationSize", 0);
-
-    if (fields.defaulted("numUnaryMatrices")) {
-      throw new RuntimeException();
-    }
-    numUnaryMatrices = fields.get("numUnaryMatrices", 0);
-
-    if (fields.defaulted("unaryClassificationSize")) {
-      throw new RuntimeException();
-    }
-    unaryClassificationSize = fields.get("unaryClassificationSize", 0);
-
-    rand = ErasureUtils.uncheckedCast(fields.get("rand", null));
-    op = ErasureUtils.uncheckedCast(fields.get("op", null));
-    op.classNames = op.DEFAULT_CLASS_NAMES;
-    op.equivalenceClasses = op.APPROXIMATE_EQUIVALENCE_CLASSES;
-    op.equivalenceClassNames = op.DEFAULT_EQUIVALENCE_CLASS_NAMES;
+    rand = ErasureUtils.uncheckedCast(in.readObject());
+    op = ErasureUtils.uncheckedCast(in.readObject());
   }
   */
+
+  private void readObject(ObjectInputStream in)
+    throws IOException, ClassNotFoundException
+  {
+    // This custom deserialization is because SimpleMatrix 0.38 barfs
+    // if you deserialize it and then use it in operations.
+
+    // My original sentence describing my opinion of this was not
+    // correctly parsed by the stanford parser, and the sentiment of
+    // it was "slightly negative" because several of the words were
+    // OOV.  That's what I get for being creative.
+
+    in.defaultReadObject();
+
+    binaryTransform.replaceAll(x -> new SimpleMatrix(x));
+    binaryTensors.replaceAll(x -> new SimpleTensor(x));
+    binaryClassification.replaceAll(x -> new SimpleMatrix(x));
+    unaryClassification.replaceAll((x, y) -> new SimpleMatrix(y));
+    wordVectors.replaceAll((x, y) -> new SimpleMatrix(y));
+  }
+
 
   /**
    * Given single matrices and sets of options, create the
@@ -195,12 +227,12 @@ public class SentimentModel implements Serializable  {
     return new SentimentModel(binaryTransform, binaryTensors, binaryClassification, unaryClassification, wordVectors, op);
   }
 
-  private SentimentModel(TwoDimensionalMap<String, String, SimpleMatrix> binaryTransform,
-                         TwoDimensionalMap<String, String, SimpleTensor> binaryTensors,
-                         TwoDimensionalMap<String, String, SimpleMatrix> binaryClassification,
-                         Map<String, SimpleMatrix> unaryClassification,
-                         Map<String, SimpleMatrix> wordVectors,
-                         RNNOptions op) {
+  public SentimentModel(TwoDimensionalMap<String, String, SimpleMatrix> binaryTransform,
+                        TwoDimensionalMap<String, String, SimpleTensor> binaryTensors,
+                        TwoDimensionalMap<String, String, SimpleMatrix> binaryClassification,
+                        Map<String, SimpleMatrix> unaryClassification,
+                        Map<String, SimpleMatrix> wordVectors,
+                        RNNOptions op) {
     this.op = op;
 
     this.binaryTransform = binaryTransform;
@@ -337,7 +369,7 @@ public class SentimentModel implements Serializable  {
   public String toString() {
     StringBuilder output = new StringBuilder();
 
-    if (binaryTransform.size() > 0) {
+    if ( ! binaryTransform.isEmpty()) {
       if (binaryTransform.size() == 1) {
         output.append("Binary transform matrix\n");
       } else {
@@ -351,42 +383,42 @@ public class SentimentModel implements Serializable  {
       }
     }
 
-    if (binaryTensors.size() > 0) {
+    if ( ! binaryTensors.isEmpty()) {
       if (binaryTensors.size() == 1) {
         output.append("Binary transform tensor\n");
       } else {
         output.append("Binary transform tensors\n");
       }
       for (TwoDimensionalMap.Entry<String, String, SimpleTensor> matrix : binaryTensors) {
-        if (!matrix.getFirstKey().equals("") || !matrix.getSecondKey().equals("")) {
+        if (!matrix.getFirstKey().isEmpty() || !matrix.getSecondKey().isEmpty()) {
           output.append(matrix.getFirstKey() + " " + matrix.getSecondKey() + ":\n");
         }
         output.append(matrix.getValue().toString("%.8f"));
       }
     }
 
-    if (binaryClassification.size() > 0) {
+    if ( ! binaryClassification.isEmpty()) {
       if (binaryClassification.size() == 1) {
         output.append("Binary classification matrix\n");
       } else {
         output.append("Binary classification matrices\n");
       }
       for (TwoDimensionalMap.Entry<String, String, SimpleMatrix> matrix : binaryClassification) {
-        if (!matrix.getFirstKey().equals("") || !matrix.getSecondKey().equals("")) {
+        if (!matrix.getFirstKey().equals("") || !matrix.getSecondKey().isEmpty()) {
           output.append(matrix.getFirstKey() + " " + matrix.getSecondKey() + ":\n");
         }
         output.append(NeuralUtils.toString(matrix.getValue(), "%.8f"));
       }
     }
 
-    if (unaryClassification.size() > 0) {
+    if ( ! unaryClassification.isEmpty()) {
       if (unaryClassification.size() == 1) {
         output.append("Unary classification matrix\n");
       } else {
         output.append("Unary classification matrices\n");
       }
       for (Map.Entry<String, SimpleMatrix> matrix : unaryClassification.entrySet()) {
-        if (!matrix.getKey().equals("")) {
+        if (!matrix.getKey().isEmpty()) {
           output.append(matrix.getKey() + ":\n");
         }
         output.append(NeuralUtils.toString(matrix.getValue(), "%.8f"));
@@ -420,7 +452,7 @@ public class SentimentModel implements Serializable  {
 
   SimpleMatrix randomTransformBlock() {
     double range = 1.0 / (Math.sqrt((double) numHid) * 2.0);
-    return SimpleMatrix.random(numHid,numHid,-range,range,rand).plus(identity);
+    return SimpleMatrix.random_DDRM(numHid,numHid,-range,range,rand).plus(identity);
   }
 
   /**
@@ -429,9 +461,9 @@ public class SentimentModel implements Serializable  {
   SimpleMatrix randomClassificationMatrix() {
     SimpleMatrix score = new SimpleMatrix(numClasses, numHid + 1);
     double range = 1.0 / (Math.sqrt((double) numHid));
-    score.insertIntoThis(0, 0, SimpleMatrix.random(numClasses, numHid, -range, range, rand));
+    score.insertIntoThis(0, 0, SimpleMatrix.random_DDRM(numClasses, numHid, -range, range, rand));
     // bias column goes from 0 to 1 initially
-    score.insertIntoThis(0, numHid, SimpleMatrix.random(numClasses, 1, 0.0, 1.0, rand));
+    score.insertIntoThis(0, numHid, SimpleMatrix.random_DDRM(numClasses, 1, 0.0, 1.0, rand));
     return score.scale(op.trainOptions.scalingForInit);
   }
 
@@ -628,7 +660,10 @@ public class SentimentModel implements Serializable  {
 
   public static SentimentModel loadSerialized(String path) {
     try {
-      return IOUtils.readObjectFromURLOrClasspathOrFileSystem(path);
+      Timing timing = new Timing();
+      SentimentModel model = IOUtils.readObjectFromURLOrClasspathOrFileSystem(path);
+      timing.done(log, "Loading sentiment model " + path);
+      return model;
     } catch (IOException | ClassNotFoundException e) {
       throw new RuntimeIOException(e);
     }

@@ -4,15 +4,19 @@ import edu.stanford.nlp.coref.CorefCoreAnnotations;
 import edu.stanford.nlp.ling.CoreAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.process.LexerUtils;
 import edu.stanford.nlp.util.CoreMap;
 import edu.stanford.nlp.util.Generics;
 import edu.stanford.nlp.util.Pair;
+import edu.stanford.nlp.util.PropertiesUtils;
 import edu.stanford.nlp.util.Timing;
 import edu.stanford.nlp.util.logging.Redwood;
 
 import java.util.*;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 
 /**
  * An annotator which picks quotations out of the given text. Allows
@@ -55,7 +59,7 @@ import java.util.regex.Pattern;
  * </ul>
  *
  * The annotator adds a QuotationsAnnotation to the Annotation
- * which returns a List<CoreMap> that
+ * which returns a List&lt;CoreMap&gt; that
  * contain the following information:
  * <ul>
  *  <li>CharacterOffsetBeginAnnotation</li>
@@ -77,7 +81,6 @@ public class QuoteAnnotator implements Annotator  {
   private static final Redwood.RedwoodChannels log = Redwood.channels(QuoteAnnotator.class);
 
   private final boolean VERBOSE;
-  private final boolean DEBUG = false;
 
   // whether or not to consider single single quotes as quote-marking
   public boolean USE_SINGLE = false;
@@ -167,9 +170,11 @@ public class QuoteAnnotator implements Annotator  {
       timer = new Timing();
       log.info("Preparing quote annotator...");
     }
-    if (ATTRIBUTE_QUOTES)
-      quoteAttributionAnnotator = new QuoteAttributionAnnotator(props);
-
+    if (ATTRIBUTE_QUOTES)  {
+      Properties relevantProperties = PropertiesUtils.extractPrefixedProperties(props,
+        "quote.attribution.");
+      quoteAttributionAnnotator = new QuoteAttributionAnnotator(relevantProperties);
+    }
     if (VERBOSE) {
       timer.stop("done.");
     }
@@ -200,8 +205,7 @@ public class QuoteAnnotator implements Annotator  {
       }
     }
     // add white space for all non-token content after last token
-    cleanedText += documentText.substring(
-        cleanedText.length(), documentText.length()).replaceAll("\\S", " ");
+    cleanedText += documentText.substring(cleanedText.length()).replaceAll("\\S", " ");
     return cleanedText;
   }
 
@@ -311,29 +315,16 @@ public class QuoteAnnotator implements Annotator  {
     return total;
   }
 
-  // Stolen from PTBLexer
-  private static final Pattern asciiSingleQuote = Pattern.compile("&apos;|[\u0091\u2018\u0092\u2019\u201A\u201B\u2039\u203A']");
-  private static final Pattern asciiDoubleQuote = Pattern.compile("&quot;|[\u0093\u201C\u0094\u201D\u201E\u00AB\u00BB\"]");
-
-  private static String asciiQuotes(String in) {
-    String s1 = in;
-    s1 = asciiSingleQuote.matcher(s1).replaceAll("'");
-    s1 = asciiDoubleQuote.matcher(s1).replaceAll("\"");
-    return s1;
-  }
 
   public static String replaceUnicode(String text) {
-    return asciiQuotes(text);
+    return LexerUtils.asciiQuotes(text);
   }
 
   public static Comparator<CoreMap> getQuoteComparator() {
-   return new Comparator<CoreMap>() {
-     @Override
-     public int compare(CoreMap o1, CoreMap o2) {
-       int s1 = o1.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class);
-       int s2 = o2.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class);
-       return s1 - s2;
-     }
+   return (o1, o2) -> {
+     int s1 = o1.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class);
+     int s2 = o2.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class);
+     return Integer.compare(s1, s2);
    };
   }
 
@@ -393,7 +384,7 @@ public class QuoteAnnotator implements Annotator  {
 
     // sort quotes by beginning index
     Comparator<CoreMap> quoteComparator = getQuoteComparator();
-    Collections.sort(cmQuotes, quoteComparator);
+    cmQuotes.sort(quoteComparator);
 
     // embed quotes
     List<CoreMap> toRemove = new ArrayList<>();
@@ -604,7 +595,7 @@ public class QuoteAnnotator implements Annotator  {
       if (EXTRACT_UNCLOSED) {
         unclosedQuotes.add(new Pair<>(start, text.length()));
       }
-      String toPass = text.substring(start + quote.length(), text.length());
+      String toPass = text.substring(start + quote.length());
       Pair<List<Pair<Integer, Integer>>, List<Pair<Integer, Integer>>> embedded = recursiveQuotes(toPass, offset, null);
       // these are the good quotes
       for (Pair<Integer, Integer> e : embedded.first()) {
@@ -763,7 +754,7 @@ public class QuoteAnnotator implements Annotator  {
   }
 
 
-  // helper method to recursively gather all embedded quotes
+  /** Helper method to recursively gather all embedded quotes. */
   public static List<CoreMap> gatherQuotes(CoreMap curr) {
     List<CoreMap> embedded = curr.get(CoreAnnotations.QuotationsAnnotation.class);
     if (embedded != null) {
@@ -772,6 +763,8 @@ public class QuoteAnnotator implements Annotator  {
         extended.addAll(gatherQuotes(quote));
       }
       extended.addAll(embedded);
+      // try sorting the quotes by beginIndex
+      extended.sort(Comparator.comparingInt(cm -> cm.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class)));
       return extended;
     } else {
       return Generics.newArrayList();

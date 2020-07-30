@@ -26,6 +26,7 @@ import java.util.function.Function;
  *
  * Some general flags are described here
  * <table border="1">
+ * <caption>Flags for sequence classifiers</caption>
  * <tr>
  * <td><b>Property Name</b></td>
  * <td><b>Type</b></td>
@@ -116,12 +117,12 @@ import java.util.function.Function;
  * (can be expensive)</td>
  * </tr>
  * <tr>
- * <td>tokenizerOptions</td></td>String</td>
+ * <td>tokenizerOptions</td><td>String</td>
  * <td>(null)</td>
  * <td>Extra options to supply to the tokenizer when creating it.</td>
  * </tr>
  * <tr>
- * <td>tokenizerFactory</td></td>String</td>
+ * <td>tokenizerFactory</td><td>String</td>
  * <td>(null)</td>
  * <td>A different tokenizer factory to use if the ReaderAndWriter in question uses tokenizers.</td>
  * </tr>
@@ -2654,6 +2655,11 @@ public class SeqClassifierFlags implements Serializable  {
     stringRep = sb.toString();
   } // end setProperties()
 
+  public static Map<String, Integer> flagsToNumArgs() {
+    Map<String, Integer> numArgs = new HashMap<String, Integer>();
+    numArgs.put("maxDocSize", 1);
+    return numArgs;
+  }
 
   // Thang Sep13: refactor to be used for multiple factories.
   private static String getFeatureFactory(String val){

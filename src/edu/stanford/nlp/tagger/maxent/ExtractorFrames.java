@@ -43,13 +43,15 @@ import java.util.*;
  *
  * The following options are supported:
  * <table>
+ * <caption>Supported feature options for the maxent tagger</caption>
  * <tr><td>Name</td><td>Args</td><td>Effect</td></tr>
  * <tr><td>words</td><td>begin, end</td>
  *     <td>Individual features for words begin ... end.
  *     If just one argument words(-2) is given, then end is taken as 0. If
  *     begin is not less than or equal to end, no features are made.</td></tr>
  * <tr><td>tags</td><td>begin, end</td>
- *     <td>Individual features for tags begin ... end</td></tr>
+ *     <td>Individual features for tags begin ... end.
+ *     If just one argument words(-2) is given, then end is taken as 0. </td></tr>
  * <tr><td>biword</td><td>w1, w2</td>
  *     <td>One feature for the pair of words w1, w2</td></tr>
  * <tr><td>biwords</td><td>begin, end</td>
@@ -61,8 +63,7 @@ import java.util.*;
  *     <td>One feature for each word begin ... end, lowercased</td></tr>
  * <tr><td>order</td><td>left, right</td>
  *     <td>A feature for tags left through 0 and a feature for
- *         tags 0 through right.  Lower order left and right features are
- *         also added.
+ *         tags 0 through right (not including 0).  Lower order left and right features are also added.
  *         This gets very expensive for higher order terms.</td></tr>
  * <tr><td>wordTag</td><td>w, t</td>
  *     <td>A feature combining word w and tag t.</td></tr>
@@ -84,9 +85,16 @@ import java.util.*;
  *         Slightly increases accuracy.</td></tr>
  * <tr><td>allunicodeshapes</td><td>left, right</td>
  *     <td>Same thing, but works for unicode characters more generally.</td></tr>
- * <tr><td>allunicodeshapeconjunction</td><td>left, right</td>
- *     <td>Instead of individual word shape features, combines several
+ * <tr><td>allwordshapeconjunction</td><td>left, right</td>
+ *     <td>Instead of individual token word shape features, combines several
  *         word shapes into one feature.</td></tr>
+ * <tr><td>allunicodeshapeconjunction</td><td>left, right</td>
+ *     <td>Instead of individual token word shape features, combines several
+ *         word shapes into one feature.</td></tr>
+ * <tr><td>spanishauxiliaries</td><td></td>
+ *     <td>Add feature detectors for Spanish auxiliaries.</td></tr>
+ * <tr><td>extractor</td><td>classname</td>
+ *     <td>Add a feature extractor by classname, which will be applied to all words.</td></tr>
  * </table>
  *
  * See {@link ExtractorFramesRare} for more options.
@@ -108,8 +116,10 @@ import java.util.*;
  * accurate, than the bidirectional architectures.
  * 'naacl2003unknowns' was our traditional set of unknown word
  * features, but you can now specify features more flexibility via the
- * various other supported keywords.
- * <br>
+ * various other supported keywords defined in {@link ExtractorFramesRare}.
+ *
+ * Note: All features are implicitly conjoined with the current tag.
+ *
  * @author Kristina Toutanova
  * @author Michel Galley
  * @version 1.0
@@ -117,36 +127,18 @@ import java.util.*;
 public class ExtractorFrames  {
 
   /** A logger for this class */
-  private static Redwood.RedwoodChannels log = Redwood.channels(ExtractorFrames.class);
+  private static final Redwood.RedwoodChannels log = Redwood.channels(ExtractorFrames.class);
 
-  // all features are implicitly conjoined with the current tag
+  // Used in various testing for properties of current word elsewhere
   static final Extractor cWord = new Extractor(0, false);
-  private static final Extractor prevWord = new Extractor(-1, false);
-  private static final Extractor prevTag = new Extractor(-1, true);
-  // prev tag and current word!
-  private static final Extractor prevTagWord = new ExtractorWordTag(0, -1);
-
-  private static final Extractor prevWord2 = new Extractor(-2,false);
-  private static final Extractor prevTwoTag = new Extractor(-2,true);
-  private static final Extractor nextWord = new Extractor(1, false);
-  private static final Extractor nextWord2 = new Extractor(2,false);
-  private static final Extractor nextTag = new Extractor(1, true);
-
-
-  // features for 2005 SIGHAN tagger
-  private static final Extractor[] eFrames_sighan2005 = { cWord, prevWord, prevWord2, nextWord, nextWord2, prevTag, prevTwoTag, new ExtractorContinuousTagConjunction(-2) };
-
-  // features for a german-language bidirectional tagger
-  private static final Extractor[] eFrames_german ={ cWord, prevWord, nextWord, nextTag,
-      prevTag, new ExtractorContinuousTagConjunction(-2), prevTagWord, new ExtractorTwoWords(-1,0) };
 
   /**
    * This class is not meant to be instantiated.
    */
-  private ExtractorFrames() {
-  }
+  private ExtractorFrames() { }
 
 
+  @SuppressWarnings("StatementWithEmptyBody")
   protected static Extractor[] getExtractorFrames(String arch) {
     // handle some traditional macro options
     // left3words: a simple trigram CMM tagger (similar to the baseline EMNLP 2000 tagger)
@@ -158,15 +150,13 @@ public class ExtractorFrames  {
     arch = arch.replaceAll("generic", "words(-1,1),order(2),biwords(-1,0),wordTag(0,-1)");
     arch = arch.replaceAll("bidirectional5words", "words(-2,2),order(-2,2),twoTags(-1,1),wordTag(0,-1),wordTag(0,1),biwords(-1,1)");
     arch = arch.replaceAll("bidirectional", "words(-1,1),order(-2,2),twoTags(-1,1),wordTag(0,-1),wordTag(0,1),biwords(-1,1)");
+    // There was an historical bidirectional "german" option which was: "words(-1,1),order(-2,1),wordTag(0,-1),biword(-1,-0)"
+    // There was an historical left "sighan2005" option which was: "words(-2,2),order(2),tags(-2, -2)"
 
     ArrayList<Extractor> extrs = new ArrayList<>();
     List<String> args = StringUtils.valueSplit(arch, "[a-zA-Z0-9]*(?:\\([^)]*\\))?", "\\s*,\\s*");
     for (String arg : args) {
-      if (arg.equals("sighan2005")) {
-        extrs.addAll(Arrays.asList(eFrames_sighan2005));
-      } else if (arg.equalsIgnoreCase("german")) {
-        extrs.addAll(Arrays.asList(eFrames_german));
-      } else if (arg.startsWith("words(")) {
+      if (arg.startsWith("words(")) {
         // non-sequence features with just a certain number of words to the
         // left and right; e.g., words(-2,2) or words(-2,-1)
         int lWindow = Extractor.getParenthesizedNum(arg, 1);
@@ -180,7 +170,10 @@ public class ExtractorFrames  {
         int lWindow = Extractor.getParenthesizedNum(arg, 1);
         int rWindow = Extractor.getParenthesizedNum(arg, 2);
         for (int i = lWindow; i <= rWindow; i++) {
-          extrs.add(new Extractor(i, true));
+          // refuse to add a tag extractor at position 0 -- that's what we're predicting
+          if (i != 0) {
+            extrs.add(new Extractor(i, true));
+          }
         }
       } else if (arg.startsWith("biwords(")) {
         // non-sequence features of word pairs.
@@ -222,13 +215,12 @@ public class ExtractorFrames  {
         // appears not to help (Dec 2009). But they can now be added with tags().
 
         for (int idx = leftOrder ; idx <= rightOrder; idx++) {
-          if (idx == 0) {
-            // do nothing
-          } else if (idx == -1 || idx == 1) {
+          if (idx == -1 || idx == 1) {
             extrs.add(new Extractor(idx, true));
-          } else {
+          } else if (idx != 0) {
             extrs.add(new ExtractorContinuousTagConjunction(idx));
           }
+          // do nothing if idx = 0. You can't use the  tag to infer itself!
         }
       } else if (arg.startsWith("wordTag(")) {
         // sequence feature of a word and a tag: wordTag(-1,1)
@@ -279,6 +271,14 @@ public class ExtractorFrames  {
       } else if (arg.equalsIgnoreCase("spanishauxiliaries")) {
         extrs.add(new ExtractorSpanishAuxiliaryTag());
         extrs.add(new ExtractorSpanishSemiauxiliaryTag());
+      } else if (arg.startsWith("extractor(")) {
+        String className = Extractor.getParenthesizedArg(arg, 1);
+        try {
+          Extractor e = (Extractor) Class.forName(className).getDeclaredConstructor().newInstance();
+          extrs.add(e);
+        } catch (Exception e) {
+          throw new RuntimeException("Couldn't create POS tagger extractor class " + className, e);
+        }
       } else if (arg.equalsIgnoreCase("naacl2003unknowns") ||
                  arg.equalsIgnoreCase("lnaacl2003unknowns") ||
                  arg.equalsIgnoreCase("caselessnaacl2003unknowns") ||
@@ -295,6 +295,7 @@ public class ExtractorFrames  {
                  arg.startsWith("distsim(") ||
                  arg.startsWith("distsimconjunction(") ||
                  arg.equalsIgnoreCase("lctagfeatures") ||
+                 arg.startsWith("rareExtractor(") ||
                  arg.startsWith("unicodeshapes(") ||
                  arg.startsWith("chinesedictionaryfeatures(") ||
                  arg.startsWith("unicodeshapeconjunction(")) {
@@ -303,7 +304,7 @@ public class ExtractorFrames  {
         log.info("Unrecognized ExtractorFrames identifier (ignored): " + arg);
       }
     } // end for
-    return extrs.toArray(new Extractor[extrs.size()]);
+    return extrs.toArray(Extractor.EMPTY_EXTRACTOR_ARRAY);
   }
 
 
@@ -555,6 +556,11 @@ public class ExtractorFrames  {
         }
       }
       return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+      return "ExtractorContinuousTagConj(" + (position < 0 ? position + " ... -1": "1 ... " + position) + ')';
     }
 
   }

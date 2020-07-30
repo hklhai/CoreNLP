@@ -1,15 +1,17 @@
-/**
+/*
  * Title:        StanfordMaxEnt<p>
  * Description:  A Maximum Entropy Toolkit<p>
- * Copyright:    Copyright (c) Kristina Toutanova<p>
+ * Author:       Kristina Toutanova<p>
+ * Copyright:    Copyright (c) The Board of Trustees of Leland Stanford Junior University<p>
  * Company:      Stanford University<p>
  */
 package edu.stanford.nlp.tagger.maxent; 
-import edu.stanford.nlp.util.logging.Redwood;
 
 import edu.stanford.nlp.io.IOUtils;
 import edu.stanford.nlp.stats.IntCounter;
 import edu.stanford.nlp.util.Generics;
+import edu.stanford.nlp.util.Interner;
+import edu.stanford.nlp.util.logging.Redwood;
 
 import java.io.IOException;
 import java.io.DataInputStream;
@@ -25,7 +27,7 @@ import java.util.Map;
 public class Dictionary  {
 
   /** A logger for this class */
-  private static Redwood.RedwoodChannels log = Redwood.channels(Dictionary.class);
+  private static final Redwood.RedwoodChannels log = Redwood.channels(Dictionary.class);
 
   private final Map<String,TagCount> dict = Generics.newHashMap();
   private final Map<Integer,CountWrapper> partTakingVerbs = Generics.newHashMap();
@@ -36,9 +38,8 @@ public class Dictionary  {
   }
 
   void fillWordTagCounts(Map<String, IntCounter<String>> wordTagCounts) {
-    for (String word : wordTagCounts.keySet()) {
-      TagCount count = new TagCount(wordTagCounts.get(word));
-      dict.put(word, count);
+    for (Map.Entry<String, IntCounter<String>> wordTagCount : wordTagCounts.entrySet()) {
+      dict.put(wordTagCount.getKey(), new TagCount(wordTagCount.getValue()));
     }
   }
 
@@ -77,65 +78,47 @@ public class Dictionary  {
 
   protected void addVThatTaking(String verb) {
     int i = verb.hashCode();
-    if (this.partTakingVerbs.containsKey(i)) {
-      this.partTakingVerbs.get(i).incThat();
+    CountWrapper wrap = this.partTakingVerbs.get(i);
+    if (wrap != null) {
+      wrap.incThat();
     } else {
       this.partTakingVerbs.put(i, new CountWrapper(verb, 0, 1, 0, 0));
     }
   }
 
   protected int getCountPart(String verb) {
-    int i = verb.hashCode();
-    if (this.partTakingVerbs.containsKey(i)) {
-      return this.partTakingVerbs.get(i).getCountPart();
-    }
-    return 0;
+    CountWrapper wrap = partTakingVerbs.get(verb.hashCode());
+    return wrap != null ? wrap.getCountPart() : 0;
   }
 
 
   protected int getCountThat(String verb) {
-    int i = verb.hashCode();
-    if (this.partTakingVerbs.containsKey(i)) {
-      return this.partTakingVerbs.get(i).getCountThat();
-    }
-    return 0;
+    CountWrapper wrap = partTakingVerbs.get(verb.hashCode());
+    return wrap != null ? wrap.getCountThat() : 0;
   }
 
 
   protected int getCountIn(String verb) {
-    int i = verb.hashCode();
-    if (this.partTakingVerbs.containsKey(i)) {
-      return this.partTakingVerbs.get(i).getCountIn();
-    }
-    return 0;
+    CountWrapper wrap = partTakingVerbs.get(verb.hashCode());
+    return wrap != null ? wrap.getCountIn() : 0;
   }
 
 
   protected int getCountRB(String verb) {
-    int i = verb.hashCode();
-    if (this.partTakingVerbs.containsKey(i)) {
-      return this.partTakingVerbs.get(i).getCountRB();
-    }
-    return 0;
+    CountWrapper wrap = partTakingVerbs.get(verb.hashCode());
+    return wrap != null ? wrap.getCountRB() : 0;
   }
 
 
   protected int getCount(String word, String tag) {
     TagCount count = dict.get(word);
-    if (count == null) {
-      return 0;
-    } else {
-      return count.get(tag);
-    }
+    return count != null ? count.get(tag) : 0;
   }
 
 
   protected String[] getTags(String word) {
-    TagCount count = get(word);
-    if (count == null) {
-      return null;
-    }
-    return count.getTags();
+    TagCount count = dict.get(word);
+    return count != null ? count.getTags() : null;
   }
 
 
@@ -146,19 +129,13 @@ public class Dictionary  {
 
   String getFirstTag(String word) {
     TagCount count = dict.get(word);
-    if (count != null) {
-      return count.getFirstTag();
-    }
-    return null;
+    return count != null ? count.getFirstTag() : null;
   }
 
 
   protected int sum(String word) {
     TagCount count = dict.get(word);
-    if (count != null) {
-      return count.sum();
-    }
-    return 0;
+    return count != null ? count.sum() : 0;
   }
 
   boolean isUnknown(String word) {
@@ -200,44 +177,19 @@ public class Dictionary  {
     }
   }
 
-  private void read(DataInputStream rf, String filename) throws IOException {
-    // Object[] arr=dict.keySet().toArray();
-
-    int maxNumTags = 0;
-    int len = rf.readInt();
-    if (VERBOSE) {
-      log.info("Reading Dictionary of " + len + " words from " + filename + '.');
-    }
-
-    for (int i = 0; i < len; i++) {
-      String word = rf.readUTF();
-      TagCount count = TagCount.readTagCount(rf);
-      int numTags = count.numTags();
-      if (numTags > maxNumTags) {
-        maxNumTags = numTags;
-      }
-      this.dict.put(word, count);
-      if (VERBOSE) {
-        log.info("  " + word + " [idx=" + i + "]: " + count);
-      }
-    }
-    if (VERBOSE) {
-      log.info("Read dictionary of " + len + " words; max tags for word was " + maxNumTags + '.');
-    }
-  }
-
   private void readTags(DataInputStream rf) throws IOException {
     // Object[] arr=dict.keySet().toArray();
 
     int maxNumTags = 0;
     int len = rf.readInt();
     if (VERBOSE) {
-      log.info("Reading Dictionary of " + len + " words.");
+      log.info("Dictionary has " + len + " words.");
     }
 
+    Interner<String> interner = new Interner<>();
     for (int i = 0; i < len; i++) {
       String word = rf.readUTF();
-      TagCount count = TagCount.readTagCount(rf);
+      TagCount count = TagCount.readTagCount(rf, interner);
       int numTags = count.numTags();
       if (numTags > maxNumTags) {
         maxNumTags = numTags;
@@ -252,19 +204,28 @@ public class Dictionary  {
     }
   }
 
+  private void readVerbs(DataInputStream rf) throws IOException {
+    int len = rf.readInt();
+    if (VERBOSE) {
+      log.info("Reading " + len + " part taking verbs");
+    }
+    for (int i = 0; i < len; i++) {
+      int iO = rf.readInt();
+      CountWrapper tC = new CountWrapper();
+      tC.read(rf);
+
+      this.partTakingVerbs.put(iO, tC);
+    }
+  }
+
   protected void read(String filename) {
     try {
       DataInputStream rf = IOUtils.getDataInputStream(filename);
-      read(rf, filename);
-
-      int len1 = rf.readInt();
-      for (int i = 0; i < len1; i++) {
-        int iO = rf.readInt();
-        CountWrapper tC = new CountWrapper();
-        tC.read(rf);
-
-        this.partTakingVerbs.put(iO, tC);
+      if (VERBOSE) {
+        log.info("Reading tagger dictionary from " + filename);
       }
+      readTags(rf);
+      readVerbs(rf);
       rf.close();
     } catch (IOException e) {
       e.printStackTrace();
@@ -273,16 +234,11 @@ public class Dictionary  {
 
   protected void read(DataInputStream file) {
     try {
-      readTags(file);
-
-      int len1 = file.readInt();
-      for (int i = 0; i < len1; i++) {
-        int iO = file.readInt();
-        CountWrapper tC = new CountWrapper();
-        tC.read(file);
-
-        this.partTakingVerbs.put(iO, tC);
+      if (VERBOSE) {
+        log.info("Reading tagger dictionary");
       }
+      readTags(file);
+      readVerbs(file);
     } catch (IOException e) {
       e.printStackTrace();
     }

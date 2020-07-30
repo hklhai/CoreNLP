@@ -31,7 +31,7 @@ import org.w3c.dom.Element;
  *
  * tid ::= ID
  *   {tid ::= TimeID
- *    TimeID ::= t<integer>}
+ *    TimeID ::= t&lt;integer&gt;}
  * type ::= 'DATE' | 'TIME' | 'DURATION' | 'SET'
  * beginPoint ::= IDREF
  *    {beginPoint ::= TimeID}
@@ -47,7 +47,7 @@ import org.w3c.dom.Element;
  * value ::= Duration | Date | Time | WeekDate | WeekTime | Season | PartOfYear | PaPrFu
  * valueFromFunction ::= IDREF
  *    {valueFromFunction ::= TemporalFunctionID
- * TemporalFunctionID ::= tf<integer>}
+ * TemporalFunctionID ::= tf&lt;integer&gt;}
  * mod ::= 'BEFORE' | 'AFTER' | 'ON_OR_BEFORE' | 'ON_OR_AFTER' |'LESS_THAN' | 'MORE_THAN' |
  *         'EQUAL_OR_LESS' | 'EQUAL_OR_MORE' | 'START' | 'MID' | 'END' | 'APPROX'
  * anchorTimeID ::= IDREF
@@ -351,16 +351,18 @@ public class Timex implements Serializable {
    * @return The matching Calendar.
    */
   public Calendar getDate() {
-    if (Pattern.matches("\\d\\d\\d\\d-\\d\\d-\\d\\d", this.val)) {
-      int year = Integer.parseInt(this.val.substring(0, 4));
-      int month = Integer.parseInt(this.val.substring(5, 7));
-      int day = Integer.parseInt(this.val.substring(8, 10));
-      return makeCalendar(year, month, day);
-    } else if (Pattern.matches("\\d\\d\\d\\d\\d\\d\\d\\d", this.val)) {
-      int year = Integer.parseInt(this.val.substring(0, 4));
-      int month = Integer.parseInt(this.val.substring(4, 6));
-      int day = Integer.parseInt(this.val.substring(6, 8));
-      return makeCalendar(year, month, day);
+    if (val != null) {
+      if (Pattern.matches("\\d\\d\\d\\d-\\d\\d-\\d\\d", this.val)) {
+        int year = Integer.parseInt(this.val.substring(0, 4));
+        int month = Integer.parseInt(this.val.substring(5, 7));
+        int day = Integer.parseInt(this.val.substring(8, 10));
+        return makeCalendar(year, month, day);
+      } else if (Pattern.matches("\\d\\d\\d\\d\\d\\d\\d\\d", this.val)) {
+        int year = Integer.parseInt(this.val.substring(0, 4));
+        int month = Integer.parseInt(this.val.substring(4, 6));
+        int day = Integer.parseInt(this.val.substring(6, 8));
+        return makeCalendar(year, month, day);
+      }
     }
     throw new UnsupportedOperationException(String.format("%s is not a fully specified date", this));
   }

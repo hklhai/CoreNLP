@@ -93,7 +93,7 @@ public abstract class AbstractSequenceClassifier<IN extends CoreMap> implements 
   public List<FeatureFactory<IN>> featureFactories;
 
   protected IN pad;
-  private CoreTokenFactory<IN> tokenFactory;
+  private final CoreTokenFactory<IN> tokenFactory;
   public int windowSize;
 
   /** Different threads can add or query knownLCWords at the same time,
@@ -683,7 +683,11 @@ public abstract class AbstractSequenceClassifier<IN extends CoreMap> implements 
     stringPrintWriter.close();
     String segmented = stringWriter.toString();
 
-    return Arrays.asList(segmented.split("\\s"));
+    if (segmented.length() == 0) {
+      return Collections.emptyList();
+    } else {
+      return Arrays.asList(segmented.split("\\s"));
+    }
   }
 
   /*
@@ -962,7 +966,7 @@ public abstract class AbstractSequenceClassifier<IN extends CoreMap> implements 
 
   /**
    * Takes a {@link List} of documents and prints the likelihood of each
-   * possible label at each point.
+   * possible label at each point. Also prints probability calibration information over document collection.
    *
    * @param documents A {@link List} of {@link List} of something that extends
    *          {@link CoreMap}.
@@ -1318,11 +1322,9 @@ public abstract class AbstractSequenceClassifier<IN extends CoreMap> implements 
    *
    * @param doc Documents to write out
    * @param printWriter Writer to use for output
-   * @throws IOException If an IO problem
    */
   public void writeAnswers(List<IN> doc, PrintWriter printWriter,
-                           DocumentReaderAndWriter<IN> readerAndWriter)
-          throws IOException {
+                           DocumentReaderAndWriter<IN> readerAndWriter) {
     if (flags.lowerNewgeneThreshold) {
       return;
     }
@@ -1603,7 +1605,7 @@ public abstract class AbstractSequenceClassifier<IN extends CoreMap> implements 
   }
 
   /** Print the String features generated from a token. */
-  protected void printFeatureLists(IN wi, Collection<List<String>> features) {
+  protected void printFeatureLists(IN wi, Collection<Collection<String>> features) {
     if (flags.printFeatures == null || writtenNum >= flags.printFeaturesUpto) {
       return;
     }
@@ -1611,7 +1613,7 @@ public abstract class AbstractSequenceClassifier<IN extends CoreMap> implements 
   }
 
   // Separating this method out lets printFeatureLists be inlined, which is good since it is usually a no-op.
-  private void printFeatureListsHelper(IN wi, Collection<List<String>> features) {
+  private void printFeatureListsHelper(IN wi, Collection<Collection<String>> features) {
     if (cliqueWriter == null) {
       cliqueWriter = IOUtils.getPrintWriterOrDie("features-" + flags.printFeatures + ".txt");
       writtenNum = 0;
@@ -1624,7 +1626,7 @@ public abstract class AbstractSequenceClassifier<IN extends CoreMap> implements 
           + wi.get(CoreAnnotations.GoldAnswerAnnotation.class) + '\t');
     }
     boolean first = true;
-    for (List<String> featList : features) {
+    for (Collection<String> featList : features) {
       List<String> sortedFeatList = new ArrayList<>(featList);
       Collections.sort(sortedFeatList);
       for (String feat : sortedFeatList) {

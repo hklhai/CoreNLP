@@ -14,7 +14,6 @@ import edu.stanford.nlp.ie.machinereading.structure.MachineReadingAnnotations;
 import edu.stanford.nlp.ie.machinereading.structure.RelationMention;
 import edu.stanford.nlp.ie.util.RelationTriple;
 import edu.stanford.nlp.io.IOUtils;
-import edu.stanford.nlp.io.RuntimeIOException;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.naturalli.NaturalLogicAnnotations;
@@ -42,10 +41,10 @@ public class TextOutputter extends AnnotationOutputter {
   }
 
   /**
-   * The meat of the outputter
+   * The meat of the outputter.
    */
-  private static void print(Annotation annotation, PrintWriter pw, Options options) throws IOException {
-    double beam = options.beamPrintingOption;
+  private static void print(Annotation annotation, PrintWriter pw, Options options) {
+    double beam = options.relationsBeam;
 
     List<CoreMap> sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
 
@@ -104,6 +103,7 @@ public class TextOutputter extends AnnotationOutputter {
         String[] tokenAnnotations = {
                 "Text", "PartOfSpeech", "Lemma", "Answer", "NamedEntityTag",
                 "CharacterOffsetBegin", "CharacterOffsetEnd", "NormalizedNamedEntityTag",
+                "CodepointOffsetBegin", "CodepointOffsetEnd",
                 "Timex", "TrueCase", "TrueCaseText", "SentimentClass", "WikipediaEntity" };
 
         pw.println();
@@ -118,7 +118,15 @@ public class TextOutputter extends AnnotationOutputter {
         if (tree != null) {
           pw.println();
           pw.println("Constituency parse: ");
-          options.constituentTreePrinter.printTree(tree, pw);
+          options.constituencyTreePrinter.printTree(tree, pw);
+        }
+
+        // display the binary tree for this sentence
+        Tree binaryTree = sentence.get(TreeCoreAnnotations.BinarizedTreeAnnotation.class);
+        if (binaryTree != null) {
+          pw.println();
+          pw.println("Binary Constituency parse: ");
+          options.constituencyTreePrinter.printTree(binaryTree, pw);
         }
 
         // display sentiment tree if they asked for sentiment
@@ -152,9 +160,18 @@ public class TextOutputter extends AnnotationOutputter {
           pw.println();
           pw.println("Extracted the following NER entity mentions:");
           for (CoreMap entityMention : entityMentions) {
+            String nerConfidenceEntry;
+            Map<String,Double> nerConfidences = entityMention.get(CoreAnnotations.NamedEntityTagProbsAnnotation.class);
+            String nerConfidenceKey =
+                    nerConfidences.keySet().size() > 0 ? (String) nerConfidences.keySet().toArray()[0] : "" ;
+            if (!nerConfidenceKey.equals("") && !nerConfidenceKey.equals("O"))
+              nerConfidenceEntry = nerConfidenceKey + ":" + nerConfidences.get(nerConfidenceKey);
+            else
+              nerConfidenceEntry = "-";
             if (entityMention.get(CoreAnnotations.EntityTypeAnnotation.class) != null) {
-              pw.println(entityMention.get(CoreAnnotations.TextAnnotation.class) + "\t"
-                  + entityMention.get(CoreAnnotations.EntityTypeAnnotation.class));
+              pw.println(entityMention.get(CoreAnnotations.TextAnnotation.class) + '\t'
+                  + entityMention.get(CoreAnnotations.EntityTypeAnnotation.class) + '\t'
+                      + nerConfidenceEntry);
             }
           }
         }
@@ -207,7 +224,16 @@ public class TextOutputter extends AnnotationOutputter {
       for (CoreLabel token : tokens) {
         int tokenCharBegin = token.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class);
         int tokenCharEnd = token.get(CoreAnnotations.CharacterOffsetEndAnnotation.class);
-        pw.println("[Text="+token.word()+" CharacterOffsetBegin="+tokenCharBegin+" CharacterOffsetEnd="+tokenCharEnd+ ']');
+        String extra = "";
+        Integer codepoint = token.get(CoreAnnotations.CodepointOffsetBeginAnnotation.class);
+        if (codepoint != null) {
+          extra = extra + " CodepointOffsetBegin=" + codepoint;
+        }
+        codepoint = token.get(CoreAnnotations.CodepointOffsetEndAnnotation.class);
+        if (codepoint != null) {
+          extra = extra + " CodepointOffsetEnd=" + codepoint;
+        }
+        pw.println("[Text="+token.word()+" CharacterOffsetBegin="+tokenCharBegin+" CharacterOffsetEnd="+tokenCharEnd+extra+']');
       }
     }
 
@@ -225,7 +251,8 @@ public class TextOutputter extends AnnotationOutputter {
             chain.getRepresentativeMention();
         boolean outputHeading = false;
         for (CorefChain.CorefMention mention : chain.getMentionsInTextualOrder()) {
-          if (mention == representative)
+          if (mention == representative &&
+              (!options.printSingletons || chain.getMentionsInTextualOrder().size() > 1))
             continue;
           if (!outputHeading) {
             outputHeading = true;
@@ -251,7 +278,7 @@ public class TextOutputter extends AnnotationOutputter {
     // display quotes if available
     if (annotation.get(CoreAnnotations.QuotationsAnnotation.class) != null) {
       pw.println();
-      pw.println("Extracted quotes: ");
+      pw.println("Extracted quotes:");
       List<CoreMap> allQuotes = QuoteAnnotator.gatherQuotes(annotation);
       for (CoreMap quote : allQuotes) {
         String speakerString;
@@ -262,12 +289,12 @@ public class TextOutputter extends AnnotationOutputter {
         } else {
           speakerString = "Unknown";
         }
-        pw.printf("[QuotationIndex=%d, CharacterOffsetBegin=%d, Text=%s, Speaker=%s]%n",
-            quote.get(CoreAnnotations.QuotationIndexAnnotation.class),
-            quote.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class),
-            quote.get(CoreAnnotations.TextAnnotation.class), speakerString
-            );
-
+        pw.printf("%s:\t%s\t[index=%d, charOffsetBegin=%d]%n",
+                speakerString,
+                quote.get(CoreAnnotations.TextAnnotation.class),
+                quote.get(CoreAnnotations.QuotationIndexAnnotation.class),
+                quote.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class)
+        );
       }
     }
 
@@ -281,13 +308,9 @@ public class TextOutputter extends AnnotationOutputter {
 
   /** Static helper */
   public static void prettyPrint(Annotation annotation, PrintWriter pw, StanfordCoreNLP pipeline) {
-    try {
-      TextOutputter.print(annotation, pw, getOptions(pipeline));
-      // already flushed
-      // don't close, might not want to close underlying stream
-    } catch (IOException e) {
-      throw new RuntimeIOException(e);
-    }
+    TextOutputter.print(annotation, pw, getOptions(pipeline.getProperties()));
+    // already flushed
+    // don't close, might not want to close underlying stream
   }
 
 }

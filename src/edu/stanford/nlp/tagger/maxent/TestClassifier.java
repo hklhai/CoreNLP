@@ -1,5 +1,4 @@
 package edu.stanford.nlp.tagger.maxent; 
-import edu.stanford.nlp.util.logging.Redwood;
 
 import java.io.IOException;
 import java.util.List;
@@ -10,6 +9,7 @@ import edu.stanford.nlp.tagger.io.TaggedFileRecord;
 import edu.stanford.nlp.util.ConfusionMatrix;
 import edu.stanford.nlp.util.concurrent.MulticoreWrapper;
 import edu.stanford.nlp.util.concurrent.ThreadsafeProcessor;
+import edu.stanford.nlp.util.logging.Redwood;
 
 /** Tags data and can handle either data with gold-standard tags (computing
  *  performance statistics) or unlabeled data.
@@ -24,7 +24,7 @@ import edu.stanford.nlp.util.concurrent.ThreadsafeProcessor;
 public class TestClassifier  {
 
   /** A logger for this class */
-  private static Redwood.RedwoodChannels log = Redwood.channels(TestClassifier.class);
+  private static final Redwood.RedwoodChannels log = Redwood.channels(TestClassifier.class);
 
   private final TaggedFileRecord fileRecord;
   private int numRight;
@@ -36,16 +36,15 @@ public class TestClassifier  {
 
   private ConfusionMatrix<String> confusionMatrix;
 
-  // TODO: only one boolean here instead of 4?  They all use the same
-  // debug status
+  // TODO: only one boolean here instead of 4? They all use the same debug status.
   private boolean writeUnknDict;
   private boolean writeWords;
   private boolean writeTopWords;
   private boolean writeConfusionMatrix;
 
-  MaxentTagger maxentTagger;
+  private MaxentTagger maxentTagger;
   TaggerConfig config;
-  String saveRoot;
+  private String saveRoot;
 
   public TestClassifier(MaxentTagger maxentTagger) throws IOException {
     this(maxentTagger, maxentTagger.config.getFile());
@@ -59,7 +58,7 @@ public class TestClassifier  {
     fileRecord = TaggedFileRecord.createRecord(config, testFile);
 
     saveRoot = config.getDebugPrefix();
-    if (saveRoot == null || saveRoot.equals("")) {
+    if (saveRoot == null || saveRoot.isEmpty()) {
       saveRoot = fileRecord.filename();
     }
 
@@ -67,13 +66,13 @@ public class TestClassifier  {
 
     if (writeConfusionMatrix) {
       PrintFile pf = new PrintFile(saveRoot + ".confusion");
-      pf.print(confusionMatrix.toString());
+      pf.print(confusionMatrix);
       pf.close();
     }
   }
 
   private void processResults(TestSentence testS,
-                              PrintFile wordsFile, PrintFile unknDictFile,
+                              PrintFile unknDictFile,
                               PrintFile topWordsFile, boolean verboseResults) {
     numSentences++;
 
@@ -94,8 +93,8 @@ public class TestClassifier  {
       log.info("Sentence number: " + numSentences + "; length " + (testS.size-1) +
                          "; correct: " + testS.numRight + "; wrong: " + testS.numWrong +
                          "; unknown wrong: " + testS.numWrongUnknown);
-      log.info("  Total tags correct: " + numRight + "; wrong: " + numWrong +
-                         "; unknown wrong: " + numWrongUnknown);
+      // log.info("  Total tags correct: " + numRight + "; wrong: " + numWrong +
+      //                    "; unknown wrong: " + numWrongUnknown);
     }
   }
 
@@ -104,9 +103,7 @@ public class TestClassifier  {
    * TODO: Add the ability to have a second transformer to transform output back; possibly combine this method
    * with method below
    */
-  private void test()
-    throws IOException
-  {
+  private void test() throws IOException {
     numSentences = 0;
     confusionMatrix = new ConfusionMatrix<>();
 
@@ -114,9 +111,9 @@ public class TestClassifier  {
     PrintFile pf1 = null;
     PrintFile pf3 = null;
 
-    if(writeWords) pf = new PrintFile(saveRoot + ".words");
-    if(writeUnknDict) pf1 = new PrintFile(saveRoot + ".un.dict");
-    if(writeTopWords) pf3 = new PrintFile(saveRoot + ".words.top");
+    if (writeWords) pf = new PrintFile(saveRoot + ".words");
+    if (writeUnknDict) pf1 = new PrintFile(saveRoot + ".un.dict");
+    if (writeTopWords) pf3 = new PrintFile(saveRoot + ".words.top");
 
     boolean verboseResults = config.getVerboseResults();
 
@@ -125,29 +122,29 @@ public class TestClassifier  {
       for (List<TaggedWord> taggedSentence : fileRecord.reader()) {
         wrapper.put(taggedSentence);
         while (wrapper.peek()) {
-          processResults(wrapper.poll(), pf, pf1, pf3, verboseResults);
+          processResults(wrapper.poll(), pf1, pf3, verboseResults);
         }
       }
       wrapper.join();
       while (wrapper.peek()) {
-        processResults(wrapper.poll(), pf, pf1, pf3, verboseResults);
+        processResults(wrapper.poll(), pf1, pf3, verboseResults);
       }
     } else{
       for (List<TaggedWord> taggedSentence : fileRecord.reader()) {
         TestSentence testS = new TestSentence(maxentTagger);
         testS.setCorrectTags(taggedSentence);
         testS.tagSentence(taggedSentence, false);
-        processResults(testS, pf, pf1, pf3, verboseResults);
+        processResults(testS, pf1, pf3, verboseResults);
       }
     }
 
-    if(pf != null) pf.close();
-    if(pf1 != null) pf1.close();
-    if(pf3 != null) pf3.close();
+    if (pf != null) pf.close();
+    if (pf1 != null) pf1.close();
+    if (pf3 != null) pf3.close();
   }
 
 
-  String resultsString(MaxentTagger maxentTagger) {
+  public String resultsString(MaxentTagger maxentTagger) {
     StringBuilder output = new StringBuilder();
     output.append(String.format("Model %s has xSize=%d, ySize=%d, and numFeatures=%d.%n",
             maxentTagger.config.getModel(),
@@ -174,6 +171,10 @@ public class TestClassifier  {
     return output.toString();
   }
 
+  public double tagAccuracy() {
+    return (numRight * 100.0) / (numRight + numWrong);
+  }
+
   void printModelAndAccuracy(MaxentTagger maxentTagger) {
     // print the output all at once so that multiple threads don't clobber each other's output
     log.info(resultsString(maxentTagger));
@@ -184,7 +185,7 @@ public class TestClassifier  {
     return numRight + numWrong;
   }
 
-  void setDebug(boolean status) {
+  private void setDebug(boolean status) {
     writeUnknDict = status;
     writeWords = status;
     writeTopWords = status;

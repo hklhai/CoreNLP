@@ -286,20 +286,52 @@ LAST UPDATE: 2016-07-24
 LAST UPDATE BY: Christopher Manning
 
 -----------------------------------------------------------------------
-ejml-0.23.jar
-ORIGINAL JAR NAME: ejml-0.23.jar
-VERSION: 0.23
-RELEASE DATE: 2013-06-21
+ejml-core-0.38.jar
+ORIGINAL JAR NAME: ejml-core-0.38.jar
+VERSION: 0.38
+RELEASE DATE: 2019-03-14
 SOURCE AVAILABLE: yes
 DESCRIPTION: Another matrix library for Java, perhaps fastest for medium
     size vectors and matrices in 2012.  Otherwise, it's ojAlgo.
-URL: http://code.google.com/p/efficient-java-matrix-library/
+URL: http://ejml.org/
 
 USED BY: Used in deep learning, especially RNN parser and sentiment
 Needed by CoreNLP distributions.
 
-LAST UPDATE: 2013-10-14
-LAST UPDATE BY: Christopher Manning
+LAST UPDATE: 2019-07-29
+LAST UPDATE BY: John Bauer
+
+-----------------------------------------------------------------------
+ejml-ddense-0.38.jar
+ORIGINAL JAR NAME: ejml-ddense-0.38.jar
+VERSION: 0.38
+RELEASE DATE: 2019-03-14
+SOURCE AVAILABLE: yes
+DESCRIPTION: Another matrix library for Java, perhaps fastest for medium
+    size vectors and matrices in 2012.  Otherwise, it's ojAlgo.
+URL: http://ejml.org/
+
+USED BY: Used in deep learning, especially RNN parser and sentiment
+Needed by CoreNLP distributions.
+
+LAST UPDATE: 2019-07-29
+LAST UPDATE BY: John Bauer
+
+-----------------------------------------------------------------------
+ejml-simple-0.38.jar
+ORIGINAL JAR NAME: ejml-simple-0.38.jar
+VERSION: 0.38
+RELEASE DATE: 2019-03-14
+SOURCE AVAILABLE: yes
+DESCRIPTION: Another matrix library for Java, perhaps fastest for medium
+    size vectors and matrices in 2012.  Otherwise, it's ojAlgo.
+URL: http://ejml.org/
+
+USED BY: Used in deep learning, especially RNN parser and sentiment
+Needed by CoreNLP distributions.
+
+LAST UPDATE: 2019-07-29
+LAST UPDATE BY: John Bauer
 
 -----------------------------------------------------------------------
 javacc.jar
@@ -359,7 +391,6 @@ LAST UPDATE BY:Sonal Gupta
 lucene-analyzers-common-4.10.3.jar
 lucene-core-4.10.3.jar
 lucene-demo-4.10.3.jar
-lucene-queries-4.10.3.jar
 lucene-queryparser-4.10.3.jar
 ORIGINAL JAR NAME: lucene-core-4.2.1.jar
                    lucene-demos-4.2.1.jar

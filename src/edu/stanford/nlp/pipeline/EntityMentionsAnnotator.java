@@ -13,8 +13,6 @@ import edu.stanford.nlp.time.Timex;
 import edu.stanford.nlp.util.*;
 import edu.stanford.nlp.util.logging.Redwood;
 
-import static edu.stanford.nlp.util.logging.Redwood.Util.logf;
-
 
 /**
  * Annotator that marks entity mentions in a document.
@@ -47,7 +45,9 @@ public class EntityMentionsAnnotator implements Annotator {
    */
   private final boolean doAcronyms;
 
-  private LanguageInfo.HumanLanguage entityMentionsLanguage;
+  private static final boolean matchTokenText = false;
+
+  private final LanguageInfo.HumanLanguage entityMentionsLanguage;
 
   // TODO: Provide properties
   public static PropertiesUtils.Property[] SUPPORTED_PROPERTIES = new PropertiesUtils.Property[]{};
@@ -67,6 +67,7 @@ public class EntityMentionsAnnotator implements Annotator {
     // defaults
     chunkIdentifier = new LabeledChunkIdentifier();
     doAcronyms = false;
+    entityMentionsLanguage = LanguageInfo.getLanguageFromString("en");
   }
 
   // note: used in annotate.properties
@@ -98,23 +99,7 @@ public class EntityMentionsAnnotator implements Annotator {
     entityMentionsLanguage = LanguageInfo.getLanguageFromString(props.getProperty(name+".language", "en"));
   }
 
-  private static boolean checkStrings(String s1, String s2) {
-    if (s1 == null || s2 == null) {
-      return Objects.equals(s1, s2);
-    } else {
-      return s1.equals(s2);
-    }
-  }
-
-  private static boolean checkNumbers(Number n1, Number n2) {
-    if (n1 == null || n2 == null) {
-      return Objects.equals(n1, n2);
-    } else {
-      return n1.equals(n2);
-    }
-  }
-
-  private List<CoreLabel> tokensForCharacters(List<CoreLabel> tokens, int charBegin, int charEnd) {
+  private static List<CoreLabel> tokensForCharacters(List<CoreLabel> tokens, int charBegin, int charEnd) {
     assert charBegin >= 0;
     List<CoreLabel> segment = Generics.newArrayList();
     for(CoreLabel token: tokens) {
@@ -139,7 +124,7 @@ public class EntityMentionsAnnotator implements Annotator {
     // Get NormalizedNamedEntityTag and say two entities are incompatible if they are different
     String v1 = cur.get(nerNormalizedCoreAnnotationClass);
     String v2 = prev.get(nerNormalizedCoreAnnotationClass);
-    if ( ! checkStrings(v1,v2)) return false;
+    if ( ! Objects.equals(v1, v2)) return false;
 
     // This duplicates logic in the QuantifiableEntityNormalizer (but maybe we will get rid of that class)
     String nerTag = cur.get(nerCoreAnnotationClass);
@@ -147,7 +132,7 @@ public class EntityMentionsAnnotator implements Annotator {
       // Get NumericCompositeValueAnnotation and say two entities are incompatible if they are different
       Number n1 = cur.get(CoreAnnotations.NumericCompositeValueAnnotation.class);
       Number n2 = prev.get(CoreAnnotations.NumericCompositeValueAnnotation.class);
-      if ( ! checkNumbers(n1,n2)) return false;
+      if ( ! Objects.equals(n1, n2)) return false;
     }
 
     // Check timex...
@@ -156,7 +141,7 @@ public class EntityMentionsAnnotator implements Annotator {
       Timex timex2 = prev.get(TimeAnnotations.TimexAnnotation.class);
       String tid1 = (timex1 != null)? timex1.tid():null;
       String tid2 = (timex2 != null)? timex2.tid():null;
-      if ( ! checkStrings(tid1,tid2)) return false;
+      if ( ! Objects.equals(tid1, tid2)) return false;
     }
 
     return true;
@@ -235,6 +220,36 @@ public class EntityMentionsAnnotator implements Annotator {
     return pronouns;
   }
 
+  public static HashMap<String,Double> determineEntityMentionConfidences(CoreMap entityMention) {
+    // get a list of labels that have probability values from the first token
+    Set<String> labelsWithProbs =
+        entityMention.get(CoreAnnotations.TokensAnnotation.class).get(0).get(
+            CoreAnnotations.NamedEntityTagProbsAnnotation.class).keySet();
+    // build the label values hash map for the entity mention
+    HashMap<String,Double> entityLabelProbVals = new HashMap<>();
+    // initialize to 1.1
+    for (String labelWithProb : labelsWithProbs) {
+      entityLabelProbVals.put(labelWithProb, 1.1);
+    }
+
+    // go through each token, see if you can find a smaller prob value for that label
+    for (CoreLabel token : entityMention.get(CoreAnnotations.TokensAnnotation.class)) {
+      Map<String,Double> labelProbsForToken = token.get(CoreAnnotations.NamedEntityTagProbsAnnotation.class);
+      for (String label : labelProbsForToken.keySet()) {
+        if (entityLabelProbVals.containsKey(label) && labelProbsForToken.get(label) < entityLabelProbVals.get(label))
+          entityLabelProbVals.put(label, labelProbsForToken.get(label));
+      }
+    }
+    // if anything is still at 1.1, set it to -1.0
+    for (String label : entityLabelProbVals.keySet()) {
+      if (entityLabelProbVals.get(label) >= 1.1) {
+        entityLabelProbVals.put(label, -1.0);
+      }
+    }
+    // return the hash map of label probs
+    return entityLabelProbVals;
+  }
+
   @Override
   public void annotate(Annotation annotation) {
     List<CoreMap> sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
@@ -283,8 +298,22 @@ public class EntityMentionsAnnotator implements Annotator {
                     "O".equals(mention.get(CoreAnnotations.WikipediaEntityAnnotation.class))) &&
                   ( token.get(CoreAnnotations.WikipediaEntityAnnotation.class) != null &&
                     !"O".equals(token.get(CoreAnnotations.WikipediaEntityAnnotation.class))) ) {
-                mention.set(CoreAnnotations.WikipediaEntityAnnotation.class, token.get(CoreAnnotations.WikipediaEntityAnnotation.class));
+                mention.set(CoreAnnotations.WikipediaEntityAnnotation.class,
+                        token.get(CoreAnnotations.WikipediaEntityAnnotation.class));
               }
+            }
+          }
+
+          if (!matchTokenText) {
+            if (annotation.get(CoreAnnotations.TextAnnotation.class) != null
+                            && mention.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class) != null
+                            && mention.get(CoreAnnotations.CharacterOffsetEndAnnotation.class) != null) {
+              String entityMentionText =
+                      annotation.get(CoreAnnotations.TextAnnotation.class).substring(
+                              mention.get(CoreAnnotations.CharacterOffsetBeginAnnotation.class),
+                              mention.get(CoreAnnotations.CharacterOffsetEndAnnotation.class)
+                      );
+              mention.set(CoreAnnotations.TextAnnotation.class, entityMentionText);
             }
           }
         }
@@ -297,14 +326,14 @@ public class EntityMentionsAnnotator implements Annotator {
     if (doAcronyms) { addAcronyms(annotation); }
 
     // Post-process add in KBP pronominal mentions, (English only for now)
-    if (entityMentionsLanguage.equals(LanguageInfo.HumanLanguage.ENGLISH))
+    if (LanguageInfo.HumanLanguage.ENGLISH.equals(entityMentionsLanguage))
       annotatePronominalMentions(annotation);
 
     // build document wide entity mentions list
     List<CoreMap> allEntityMentions = new ArrayList<>();
     int entityMentionIndex = 0;
     for (CoreMap sentence : annotation.get(CoreAnnotations.SentencesAnnotation.class)) {
-      for (CoreMap entityMention : sentence.get(CoreAnnotations.MentionsAnnotation.class)) {
+      for (CoreMap entityMention : sentence.get(mentionsCoreAnnotationClass)) {
         entityMention.set(CoreAnnotations.EntityMentionIndexAnnotation.class, entityMentionIndex);
         entityMention.set(CoreAnnotations.CanonicalEntityMentionIndexAnnotation.class, entityMentionIndex);
         for (CoreLabel entityMentionToken : entityMention.get(CoreAnnotations.TokensAnnotation.class)) {
@@ -314,12 +343,19 @@ public class EntityMentionsAnnotator implements Annotator {
         entityMentionIndex++;
       }
     }
+
+    // set the entity mention confidence
+    for (CoreMap entityMention : allEntityMentions) {
+      HashMap<String,Double> entityMentionLabelProbVals = determineEntityMentionConfidences(entityMention);
+      entityMention.set(CoreAnnotations.NamedEntityTagProbsAnnotation.class, entityMentionLabelProbVals);
+    }
+
     annotation.set(mentionsCoreAnnotationClass, allEntityMentions);
   }
 
   private void addAcronyms(Annotation ann) {
     // Find all the organizations in a document
-    List<CoreMap> allMentionsSoFar = new ArrayList<CoreMap>();
+    List<CoreMap> allMentionsSoFar = new ArrayList<>();
     for (CoreMap sentence : ann.get(CoreAnnotations.SentencesAnnotation.class)) {
       allMentionsSoFar.addAll(sentence.get(CoreAnnotations.MentionsAnnotation.class));
     }
@@ -334,7 +370,7 @@ public class EntityMentionsAnnotator implements Annotator {
 
     // Iterate over tokens...
     for (CoreMap sentence : ann.get(CoreAnnotations.SentencesAnnotation.class)) {
-      List<CoreMap> sentenceMentions = new ArrayList<CoreMap>();
+      List<CoreMap> sentenceMentions = new ArrayList<>();
       List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
       Integer totalTokensOffset = sentence.get(CoreAnnotations.TokenBeginAnnotation.class);
       for (int i = 0; i < tokens.size(); ++i) {

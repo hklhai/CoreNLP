@@ -61,7 +61,7 @@ public class ClauseSplitterSearchProblem  {
       add("simple");
     }});
     put("xcomp", new ArrayList<String>() {{
-      add("clone_dobj");
+      add("clone_obj");
       add("clone_nsubj");
       add("simple");
     }});
@@ -70,7 +70,7 @@ public class ClauseSplitterSearchProblem  {
       add("simple");
     }});
     put("csubj", new ArrayList<String>() {{
-      add("clone_dobj");
+      add("clone_obj");
       add("simple");
     }});
     put("advcl", new ArrayList<String>() {{
@@ -83,7 +83,7 @@ public class ClauseSplitterSearchProblem  {
     }});
     put("conj:*", new ArrayList<String>() {{
       add("clone_nsubj");
-      add("clone_dobj");
+      add("clone_obj");
       add("simple");
     }});
     put("acl:relcl", new ArrayList<String>() {{  // no doubt (-> that cats have tails <-)
@@ -329,6 +329,18 @@ public class ClauseSplitterSearchProblem  {
         }
       }
     }
+    if (toKeep.getRelation().toString().startsWith("conj")) {
+      // A conj may be connected to a cc below it, but
+      // keeping that would result in weird / incorrect fragments
+      // such as
+      // "he and taught constitutional law..."
+      // so we remove the "and" / cc relation here
+      for (SemanticGraphEdge out : tree.outgoingEdgeIterable(toKeep.getDependent())) {
+        if (out.getRelation().toString().equals("cc")) {
+          nodesToRemove.add(out.getDependent());
+        }
+      }
+    }
     // Remove nodes
     nodesToRemove.forEach(tree::removeVertex);
     // Set new root
@@ -339,7 +351,7 @@ public class ClauseSplitterSearchProblem  {
   /**
    * The basic method for splitting off a clause of a tree.
    * This modifies the tree in place.
-   * This method addtionally follows ref edges.
+   * This method additionally follows ref edges.
    *
    * @param tree The tree to split a clause from.
    * @param toKeep The edge representing the clause to keep.
@@ -685,7 +697,7 @@ public class ClauseSplitterSearchProblem  {
     actionSpace.add(new Action() {
       @Override
       public String signature() {
-        return "clone_dobj";
+        return "clone_obj";
       }
 
       @Override
@@ -886,7 +898,7 @@ public class ClauseSplitterSearchProblem  {
                 Counters.logNormalizeInPlace(scores);
               }
               String rel = outgoingEdge.getRelation().toString();
-              if ("nsubj".equals(rel) || "dobj".equals(rel)) {
+              if ("nsubj".equals(rel) || "obj".equals(rel)) {
                 scores.remove(ClauseClassifierLabel.NOT_A_CLAUSE);  // Always at least yield on nsubj and dobj
               }
               logProbability = Counters.max(scores, Double.NEGATIVE_INFINITY);

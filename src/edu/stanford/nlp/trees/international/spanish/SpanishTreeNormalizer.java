@@ -38,8 +38,6 @@ public class SpanishTreeNormalizer extends BobChrisTreeNormalizer {
   public static final String MW_PHRASE_TAG = "MW_PHRASE?";
 
   public static final String EMPTY_LEAF_VALUE = "=NONE=";
-  public static final String LEFT_PARENTHESIS = "=LRB=";
-  public static final String RIGHT_PARENTHESIS = "=RRB=";
 
   private static final Map<String, String> spellingFixes = new HashMap<>();
 
@@ -51,13 +49,6 @@ public class SpanishTreeNormalizer extends BobChrisTreeNormalizer {
     spellingFixes.put("tambien", "también"); // 41_19991002.tbf-8
 
     spellingFixes.put("Intitute", "Institute"); // 22863_20001129.tbf-16
-
-    // Hack: these aren't exactly spelling mistakes, but we need to
-    // run a search-and-replace across the entire corpus with them, so
-    // they should be treated just like spelling mistakes for our
-    // purposes
-    spellingFixes.put("(", LEFT_PARENTHESIS);
-    spellingFixes.put(")", RIGHT_PARENTHESIS);
   }
 
   private static final long serialVersionUID = 7810182997777764277L;
@@ -204,6 +195,10 @@ public class SpanishTreeNormalizer extends BobChrisTreeNormalizer {
 
   @Override
   public Tree normalizeWholeTree(Tree tree, TreeFactory tf) {
+    return normalizeWholeTree(tree, tf, false, false);
+  }
+
+  public Tree normalizeWholeTree(Tree tree, TreeFactory tf, boolean expandElisions, boolean expandConmigo) {
     // Begin with some basic transformations
     tree = tree.prune(emptyFilter).spliceOut(aOverAFilter)
       .transform(constituentRenamer);
@@ -236,8 +231,10 @@ public class SpanishTreeNormalizer extends BobChrisTreeNormalizer {
     }
 
     // More tregex-powered fixes
-    tree = expandElisions(tree);
-    tree = expandConmigo(tree);
+    if (expandElisions)
+      tree = expandElisions(tree);
+    if (expandConmigo)
+      tree = expandConmigo(tree);
     tree = expandCliticPronouns(tree);
 
     // Make sure the tree has a top-level unary rewrite; the root
@@ -586,7 +583,7 @@ public class SpanishTreeNormalizer extends BobChrisTreeNormalizer {
         if (newLeaf.label() instanceof HasWord)
           ((HasWord) newLeaf.label()).setWord(word);
 
-        Tree newNode = tf.newTreeNode(MW_TAG, Arrays.asList(newLeaf));
+        Tree newNode = tf.newTreeNode(MW_TAG, Collections.singletonList(newLeaf));
         if (newNode.label() instanceof HasTag)
           ((HasTag) newNode.label()).setTag(MW_TAG);
 

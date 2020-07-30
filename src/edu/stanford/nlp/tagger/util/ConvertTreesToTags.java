@@ -18,9 +18,10 @@ import edu.stanford.nlp.tagger.io.TaggedFileRecord;
  * into one file of tagged text.  Useful for combining many parse tree
  * training files into one tagger training file, since the tagger
  * doesn't have convenient ways of reading in an entire directory.
- * <br>
+ * <p>
  * There are a few command line arguments available:
  * <table>
+ * <caption>Command line arguments</caption>
  * <tr>
  * <td> -output &lt;filename&gt; </td>
  * <td> File to output the data to </td>
@@ -64,8 +65,9 @@ import edu.stanford.nlp.tagger.io.TaggedFileRecord;
 public class ConvertTreesToTags  {
 
   /** A logger for this class */
-  private static Redwood.RedwoodChannels log = Redwood.channels(ConvertTreesToTags.class);
-  private ConvertTreesToTags() {}; // main method only
+  private static final Redwood.RedwoodChannels log = Redwood.channels(ConvertTreesToTags.class);
+
+  private ConvertTreesToTags() {} // main method only
 
   public static void main(String[] args) throws IOException {
     String outputFilename = "";
@@ -118,11 +120,11 @@ public class ConvertTreesToTags  {
         inputFilenames.add(args[i]);
       }
     }
-    if (outputFilename.equals("")) {
+    if (outputFilename.isEmpty()) {
       log.info("Must specify an output filename, -output");
       System.exit(2);
     }
-    if (inputFilenames.size() == 0) {
+    if (inputFilenames.isEmpty()) {
       log.info("Must specify one or more input filenames");
       System.exit(2);
     }
@@ -132,20 +134,20 @@ public class ConvertTreesToTags  {
     BufferedWriter bout = new BufferedWriter(osw);
     Properties props = new Properties();
     for (String filename : inputFilenames) {
-      String description = (TaggedFileRecord.FORMAT + "=" +
-                            TaggedFileRecord.Format.TREES + "," + filename);
-      if (!treeRange.equals("")) {
-        description = (TaggedFileRecord.TREE_RANGE + "=" + treeRange +
-                       "," + description);
+      String description = TaggedFileRecord.FORMAT + "=" +
+                            TaggedFileRecord.Format.TREES + "," + filename;
+      if (!treeRange.isEmpty()) {
+        description = TaggedFileRecord.TREE_RANGE + "=" + treeRange +
+                       "," + description;
       }
-      if (!treeFilter.equals("")) {
-        description = (TaggedFileRecord.TREE_FILTER + "=" + treeFilter +
-                       "," + description);
+      if (!treeFilter.isEmpty()) {
+        description = TaggedFileRecord.TREE_FILTER + "=" + treeFilter +
+                       "," + description;
       }
-      description = (TaggedFileRecord.ENCODING + "=" + inputEncoding +
-                     "," + description);
-      TaggedFileRecord record =
-        TaggedFileRecord.createRecord(props, description);
+      description = TaggedFileRecord.ENCODING + "=" + inputEncoding +
+                     "," + description;
+      TaggedFileRecord record = TaggedFileRecord.createRecord(props, description);
+
       for (List<TaggedWord> sentence : record.reader()) {
         String output = SentenceUtils.listToString(sentence, noTags, tagSeparator);
         if (noSpaces) {
@@ -160,4 +162,5 @@ public class ConvertTreesToTags  {
     osw.close();
     fos.close();
   }
+
 }

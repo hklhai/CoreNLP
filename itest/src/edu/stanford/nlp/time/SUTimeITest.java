@@ -22,7 +22,7 @@ public class SUTimeITest extends TestCase {
     synchronized(SUTimeITest.class) {
       if (pipeline == null) {
         pipeline = new AnnotationPipeline();
-        pipeline.addAnnotator(new TokenizerAnnotator(false, "en"));
+        pipeline.addAnnotator(new TokenizerAnnotator(false, "en", "splitHyphenated=false"));
         pipeline.addAnnotator(new WordsToSentencesAnnotator(false));
         pipeline.addAnnotator(new POSTaggerAnnotator(DefaultPaths.DEFAULT_POS_MODEL, false));
         //pipeline.addAnnotator(new NumberAnnotator(false));
@@ -1342,6 +1342,30 @@ public class SUTimeITest extends TestCase {
 
     for (CoreMap timexAnn: documentWithRefTime.get(TimeAnnotations.TimexAnnotations.class)) {
       Timex expectedTimex = expectedTimexesResolved.next();
+      checkTimex(testText, expectedTimex.text(), expectedTimex, timexAnn);
+    }
+    assertFalse(expectedTimexes.hasNext());
+  }
+
+  public void testInnerCaptureGroupAccess() throws IOException {
+    // Set up test text
+    String testText = "The sword is believed to be from the 10th-century a.d. according to experts.";
+    // set up expected results
+    Iterator<Timex> expectedTimexes =
+            Arrays.asList(
+                    Timex.fromXml("<TIMEX3 tid=\"t1\" type=\"DATE\" value=\"09XX\">the 10th-century a.d.</TIMEX3>")
+            ).iterator();
+    // run test
+    // create document
+    Annotation document = createDocument(testText);
+
+    // Time annotate
+    TimeAnnotator sutime = getTimeAnnotator();
+    sutime.annotate(document);
+
+    // Check answers
+    for (CoreMap timexAnn: document.get(TimeAnnotations.TimexAnnotations.class)) {
+      Timex expectedTimex = expectedTimexes.next();
       checkTimex(testText, expectedTimex.text(), expectedTimex, timexAnn);
     }
     assertFalse(expectedTimexes.hasNext());

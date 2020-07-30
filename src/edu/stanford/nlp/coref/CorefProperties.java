@@ -20,7 +20,7 @@ public class CorefProperties {
 
   //---------- Coreference Algorithms ----------
 
-  public enum CorefAlgorithmType {CLUSTERING, STATISTICAL, NEURAL, HYBRID}
+  public enum CorefAlgorithmType {CLUSTERING, STATISTICAL, NEURAL, FASTNEURAL, HYBRID}
 
   public static CorefAlgorithmType algorithm(Properties props) {
     String type = PropertiesUtils.getString(props, "coref.algorithm",
@@ -31,7 +31,7 @@ public class CorefProperties {
   //---------- General Coreference Options ----------
 
   /**
-   * When conll() is true, coref models:
+   * When conll() is true, the neural and statistical (but not fastneural) coref models:
    * <ul>
    *    <li>Use provided POS, NER, Parsing, etc. (instead of using CoreNLP annotators)</li>
    *    <li>Use provided speaker annotations</li>
@@ -44,7 +44,8 @@ public class CorefProperties {
 
   public static boolean useConstituencyParse(Properties props) {
     return PropertiesUtils.getBool(props, "coref.useConstituencyParse",
-        algorithm(props) != CorefAlgorithmType.STATISTICAL || conll(props));
+        (algorithm(props) != CorefAlgorithmType.STATISTICAL &&
+        algorithm(props) != CorefAlgorithmType.FASTNEURAL)|| conll(props));
   }
 
   public static boolean verbose(Properties props) {
@@ -172,7 +173,6 @@ public class CorefProperties {
   private static String getLanguageStr(Properties props) {
     return getLanguage(props).getDisplayName().toLowerCase();
   }
-
 
   public static HeadFinder getHeadFinder(Properties props) {
     Locale lang = getLanguage(props);

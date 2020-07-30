@@ -32,7 +32,7 @@ import static edu.stanford.nlp.trees.GrammaticalRelation.*;
 public class EnglishGrammaticalStructure extends GrammaticalStructure  {
 
   /** A logger for this class */
-  private static Redwood.RedwoodChannels log = Redwood.channels(EnglishGrammaticalStructure.class);
+  private static final Redwood.RedwoodChannels log = Redwood.channels(EnglishGrammaticalStructure.class);
 
   private static final long serialVersionUID = -1866362375001969402L;
 
@@ -1243,8 +1243,7 @@ public class EnglishGrammaticalStructure extends GrammaticalStructure  {
         continue; // This one has been dealt with successfully
       } // end same prepositions
 
-      // case of "Lufthansa flies to and from Serbia". Make it look like next
-      // case :-)
+      // case of "Lufthansa flies to and from Serbia". Make it look like next case :-)
       // that is, the prepOtherDep should be the same as prepDep !
       for (Triple<TypedDependency, TypedDependency, Boolean> trip : conjs) {
         if (trip.first() != null && trip.second() == null) {
@@ -1257,16 +1256,18 @@ public class EnglishGrammaticalStructure extends GrammaticalStructure  {
       // in this case we need to add a node
       // "Bill jumped over the fence and through the hoop"
       // prep_over(jumped, fence)
-      // conj_and(jumped, jumped)
-      // prep_through(jumped, hoop)
+      // conj_and(jumped, jumped')
+      // prep_through(jumped', hoop)
       // Extra complication:
       // If "jumped" is already part of a conjunction, we should add the new one off that rather than chaining
-      IndexedWord conjHead = td1.gov();
-      for (TypedDependency td3 : list) {
-        if (td3.dep().equals(td1.gov()) && td3.reln().equals(CONJUNCT)) {
-          conjHead = td3.gov();
-        }
-      }
+      // [cdm June 2020] This bit of code below was a no-op, since conjHead was never further used anywhere, and the
+      // case above is handled correctly without it included, so I've just commented it out.
+      // IndexedWord conjHead = td1.gov();
+      // for (TypedDependency td3 : list) {
+      //   if (td3.dep().equals(td1.gov()) && td3.reln().equals(CONJUNCT)) {
+      //     conjHead = td3.gov();
+      //   }
+      // }
 
       GrammaticalRelation reln = determinePrepRelation(map, vmod, td1, td1, prepDep.second());
       TypedDependency tdNew = new TypedDependency(reln, td1.gov(), prepDep.first().dep());
@@ -1521,16 +1522,16 @@ public class EnglishGrammaticalStructure extends GrammaticalStructure  {
 
   /**
    * Collapse multiword preposition of the following format:
-   * prep|advmod|dep|amod(gov, mwp[0]) <br/>
-   * dep(mpw[0],mwp[1]) <br/>
-   * pobj|pcomp(mwp[1], compl) or pobj|pcomp(mwp[0], compl) <br/>
-   * -&gt; prep_mwp[0]_mwp[1](gov, compl) <br/>
+   * prep|advmod|dep|amod(gov, mwp[0]) <br>
+   * dep(mpw[0],mwp[1]) <br>
+   * pobj|pcomp(mwp[1], compl) or pobj|pcomp(mwp[0], compl) <br>
+   * -&gt; prep_mwp[0]_mwp[1](gov, compl) <br>
    *
-   * prep|advmod|dep|amod(gov, mwp[1]) <br/>
-   * dep(mpw[1],mwp[0]) <br/>
-   * pobj|pcomp(mwp[1], compl) or pobj|pcomp(mwp[0], compl) <br/>
+   * prep|advmod|dep|amod(gov, mwp[1]) <br>
+   * dep(mpw[1],mwp[0]) <br>
+   * pobj|pcomp(mwp[1], compl) or pobj|pcomp(mwp[0], compl) <br>
    * -&gt; prep_mwp[0]_mwp[1](gov, compl)
-   * <p/>
+   * <br>
    *
    * The collapsing has to be done at once in order to know exactly which node
    * is the gov and the dep of the multiword preposition. Otherwise this can
@@ -1564,7 +1565,7 @@ public class EnglishGrammaticalStructure extends GrammaticalStructure  {
    * Collapse multiword preposition of the following format:
    * prep|advmod|dep|amod(gov, mwp0) dep(mpw0,mwp1) pobj|pcomp(mwp1, compl) or
    * pobj|pcomp(mwp0, compl) -&gt; prep_mwp0_mwp1(gov, compl)
-   * <p/>
+   * <br>
    *
    * @param list List of typedDependencies to work on,
    * @param newTypedDeps List of typedDependencies that we construct
@@ -1681,7 +1682,7 @@ public class EnglishGrammaticalStructure extends GrammaticalStructure  {
    * Collapse multi-words preposition of the following format: advmod|prt(gov,
    * mwp[0]) prep(gov,mwp[1]) pobj|pcomp(mwp[1], compl) -&gt;
    * prep_mwp[0]_mwp[1](gov, compl)
-   * <p/>
+   * <br>
    *
    * @param list
    *          List of typedDependencies to work on
@@ -1781,22 +1782,22 @@ public class EnglishGrammaticalStructure extends GrammaticalStructure  {
   }
 
   /**
-   * Collapse 3-word preposition of the following format: <br/>
-   * This will be the case when the preposition is analyzed as a NP <br/>
-   * prep(gov, mwp0) <br/>
-   * X(mwp0,mwp1) <br/>
-   * X(mwp1,mwp2) <br/>
-   * pobj|pcomp(mwp2, compl) <br/>
+   * Collapse 3-word preposition of the following format: <br>
+   * This will be the case when the preposition is analyzed as a NP <br>
+   * prep(gov, mwp0) <br>
+   * X(mwp0,mwp1) <br>
+   * X(mwp1,mwp2) <br>
+   * pobj|pcomp(mwp2, compl) <br>
    * -&gt; prep_mwp[0]_mwp[1]_mwp[2](gov, compl)
-   * <p/>
+   * <br>
    *
-   * It also takes flat annotation into account: <br/>
-   * prep(gov,mwp0) <br/>
-   * X(mwp0,mwp1) <br/>
-   * X(mwp0,mwp2) <br/>
-   * pobj|pcomp(mwp0, compl) <br/>
+   * It also takes flat annotation into account: <br>
+   * prep(gov,mwp0) <br>
+   * X(mwp0,mwp1) <br>
+   * X(mwp0,mwp2) <br>
+   * pobj|pcomp(mwp0, compl) <br>
    * -&gt; prep_mwp[0]_mwp[1]_mwp[2](gov, compl)
-   * <p/>
+   * <br>
    *
    *
    * @param list List of typedDependencies to work on
@@ -2036,7 +2037,7 @@ public class EnglishGrammaticalStructure extends GrammaticalStructure  {
    * Collapse multi-words preposition of the following format, which comes from
    * flat annotation. This handles e.g., "because of" (PP (IN because) (IN of)
    * ...), "such as" (PP (JJ such) (IN as) ...)
-   * <p/>
+   * <br>
    * prep(gov, mwp[1]) dep(mpw[1], mwp[0]) pobj(mwp[1], compl) -&gt;
    * prep_mwp[0]_mwp[1](gov, compl)
    *

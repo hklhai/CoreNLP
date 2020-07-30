@@ -24,27 +24,30 @@
 //Licensing: java-nlp-support@lists.stanford.edu
 //http://www-nlp.stanford.edu/software/tagger.shtml
 
-
-
 package edu.stanford.nlp.parser.lexparser;
 
-import edu.stanford.nlp.ling.CoreAnnotations;
-import edu.stanford.nlp.ling.SentenceUtils;
-import junit.framework.TestCase;
-
-import edu.stanford.nlp.ling.CoreLabel;
-import edu.stanford.nlp.parser.common.ParserAnnotations;
-import edu.stanford.nlp.parser.common.ParserConstraint;
-import edu.stanford.nlp.parser.common.ParserQuery;
-import edu.stanford.nlp.trees.Tree;
-import edu.stanford.nlp.trees.TreePrint;
-import edu.stanford.nlp.trees.TreebankLanguagePack;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import edu.stanford.nlp.ling.CoreAnnotations;
+import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.ling.SentenceUtils;
+import edu.stanford.nlp.parser.common.ParserAnnotations;
+import edu.stanford.nlp.parser.common.ParserConstraint;
+import edu.stanford.nlp.parser.common.ParserQuery;
+import edu.stanford.nlp.trees.Tree;
+import edu.stanford.nlp.trees.TreePrint;
+import edu.stanford.nlp.trees.TreebankLanguagePack;
 
 
 /**
@@ -56,7 +59,7 @@ import java.util.List;
  *
  * @author John Bauer
  */
-public class LexicalizedParserITest extends TestCase {
+public class LexicalizedParserITest {
 
   private static LexicalizedParser englishParser = null;
   private static TreePrint tagPrint = null;
@@ -70,7 +73,7 @@ public class LexicalizedParserITest extends TestCase {
 
   // TODO: add more tests
 
-  @Override
+  @Before
   public void setUp() throws Exception {
     synchronized(LexicalizedParserITest.class) {
       if (englishParser == null) {
@@ -154,19 +157,21 @@ public class LexicalizedParserITest extends TestCase {
    * This method tests a very basic string and a few different results
    * that parsing that string should come up with.
    */
+  @Test
   public void testParseString() {
     Tree results = englishParser.parse("My dog likes to eat yoghurt.");
     compareOutput(results, false,
                   "My/PRP$ dog/NN likes/VBZ to/TO eat/VB yoghurt/NN ./.",
                   "(ROOT (S (NP (PRP$ My) (NN dog)) (VP (VBZ likes) (S (VP (TO to) (VP (VB eat) (NP (NN yoghurt)))))) (. .)))",
-                  "nmod:poss(dog-2, My-1) nsubj(likes-3, dog-2) root(ROOT-0, likes-3) mark(eat-5, to-4) xcomp(likes-3, eat-5) dobj(eat-5, yoghurt-6)",
-                  "nmod:poss(dog-2, My-1) nsubj(likes-3, dog-2) nsubj:xsubj(eat-5, dog-2) root(ROOT-0, likes-3) mark(eat-5, to-4) xcomp(likes-3, eat-5) dobj(eat-5, yoghurt-6)");
+                  "nmod:poss(dog-2, My-1) nsubj(likes-3, dog-2) root(ROOT-0, likes-3) mark(eat-5, to-4) xcomp(likes-3, eat-5) obj(eat-5, yoghurt-6)",
+                  "nmod:poss(dog-2, My-1) nsubj(likes-3, dog-2) nsubj:xsubj(eat-5, dog-2) root(ROOT-0, likes-3) mark(eat-5, to-4) xcomp(likes-3, eat-5) obj(eat-5, yoghurt-6)");
   }
 
   /**
    * Test the query structure that you can use for better control of
    * the parse
    */
+  @Test
   public void testParserQuery() {
     List<CoreLabel> sentence = sampleSausage();
     ParserQuery pq = englishParser.parserQuery();
@@ -175,6 +180,7 @@ public class LexicalizedParserITest extends TestCase {
                         "(ROOT (S (NP (PRP$ My) (NN dog)) (ADVP (RB also)) (VP (VBZ likes) (S (VP (VBG eating) (NP (NN sausage))))) (. .)))");
   }
 
+  @Test
   public void testParseMultiple() {
     List<List<CoreLabel>> sentences = new ArrayList<>();
     sentences.add(SentenceUtils.toCoreLabelList("The", "Flyers", "lost", "again", "last", "night", "."));
@@ -192,13 +198,13 @@ public class LexicalizedParserITest extends TestCase {
   /**
    * Test what happens if you put a constraint on the parse
    */
+  @Test
   public void testConstraints() {
     List<CoreLabel> sentence = sampleSausage();
 
     ParserQuery pq = englishParser.parserQuery();
 
-    ParserConstraint constraint =
-      new ParserConstraint(0, 2, "SBAR|SBAR[^a-zA-Z].*");
+    ParserConstraint constraint = new ParserConstraint(0, 2, "INTJ");
     List<ParserConstraint> constraints = new ArrayList<>();
     constraints.add(constraint);
     pq.setConstraints(constraints);
@@ -216,8 +222,8 @@ public class LexicalizedParserITest extends TestCase {
     // original output any more
     assertFalse("Tree should not match the original tree any more",
                 expectedOutput.equals(actualOutput));
-    assertTrue("Tree should be forced to contain SBAR",
-            actualOutput.contains("SBAR"));
+    assertTrue("Tree should be forced to contain INTJ",
+            actualOutput.contains("INTJ"));
 
     //System.out.println(pq.getBestParse());
   }
@@ -226,7 +232,8 @@ public class LexicalizedParserITest extends TestCase {
   private static final String expectedChineseTree = "(ROOT (IP (NP (PN 我)) (VP (VV 看) (AS 了) (NP (QP (CD 一) (CLP (M 条))) (NP (NN 狗))))))";
   private static final String expectedChineseDeps = "nsubj(看-2, 我-1) root(ROOT-0, 看-2) asp(看-2, 了-3) nummod(条-5, 一-4) clf(狗-6, 条-5) dobj(看-2, 狗-6)";
 
-  public static void testChineseDependencies() {
+  @Test
+  public void testChineseDependencies() {
     Tree tree = chineseParser.parse(chineseTest);
     compareSingleOutput(tree, false, chinesePennPrint, expectedChineseTree);
     compareSingleOutput(tree, false, chineseTypDepPrint, expectedChineseDeps);
@@ -239,6 +246,7 @@ public class LexicalizedParserITest extends TestCase {
   /** This is the right answer for old-style Chinese SD. */
   private static final String expectedChineseDeps2sd = "top(是-2, 这里-1) root(ROOT-0, 是-2) assmod(夜-5, 新闻-3) assm(新闻-3, 之-4) attr(是-2, 夜-5)";
 
+  @Test
   public void testChineseDependenciesSemanticHead() {
     Tree tree = chineseParser.parse(chineseTest2);
     compareSingleOutput(tree, false, chinesePennPrint, expectedChineseTree2);
@@ -247,6 +255,7 @@ public class LexicalizedParserITest extends TestCase {
     compareSingleOutput(tree, false, paramsTreePrint, expectedChineseDeps2sd);
   }
 
+  @Test
   public void testAlreadyTagged() {
     List<CoreLabel> words = SentenceUtils.toCoreLabelList("foo", "bar", "baz");
     words.get(1).setTag("JJ");
@@ -258,6 +267,7 @@ public class LexicalizedParserITest extends TestCase {
     assertEquals("NN", tree.taggedYield().get(1).tag());
   }
 
+  @Test
   public void testTagRegex() {
     List<CoreLabel> words = SentenceUtils.toCoreLabelList("foo", "bar", "baz");
     words.get(1).set(ParserAnnotations.CandidatePartOfSpeechAnnotation.class, "JJ");
@@ -270,6 +280,7 @@ public class LexicalizedParserITest extends TestCase {
             tree.taggedYield().get(1).tag().equals("NNP"));
   }
 
+  @Test
   public void testCharOffsets() {
     String text = "  You can  eat fruits   such as apples and   oranges.";
     String[] tokens = { "You", "can", "eat", "fruits", "such", "as", "apples", "and", "oranges", "." };
@@ -290,7 +301,5 @@ public class LexicalizedParserITest extends TestCase {
       i++;
     }
   }
-
-
 }
 

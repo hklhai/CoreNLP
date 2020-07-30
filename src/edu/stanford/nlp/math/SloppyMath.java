@@ -51,7 +51,8 @@ public final class SloppyMath  {
   /* Note: Math.max(a, b) and Math.min(a, b) do no extra checks when
    * a and b are int or long; they are simply {@code a >= b ? a : b},
    * so you can just call those methods and no extra methods for these
-   * are needed here.
+   * are needed here. (And in 2020, it's not clear whether code is useful
+   * even for the floating point ones, since there may be intrinsics?)
    */
 
   /**
@@ -61,8 +62,7 @@ public final class SloppyMath  {
    * @return The maximum of three int values.
    */
   public static int max(int a, int b, int c) {
-    int ma;
-    ma = a;
+    int ma = a;
     if (b > ma) {
       ma = b;
     }
@@ -117,9 +117,7 @@ public final class SloppyMath  {
    * Returns the minimum of three int values.
    */
   public static int min(int a, int b, int c) {
-    int mi;
-
-    mi = a;
+    int mi = a;
     if (b < mi) {
       mi = b;
     }
@@ -263,13 +261,8 @@ public final class SloppyMath  {
       max = ly;
       negDiff = lx - ly;
     }
-    if (max == Double.NEGATIVE_INFINITY) {
-      return max;
-    } else if (negDiff < -LOGTOLERANCE_F) {
-      return max;
-    } else {
-      return max + (float) Math.log(1.0 + Math.exp(negDiff));
-    }
+    return (max == Float.NEGATIVE_INFINITY || negDiff < -LOGTOLERANCE_F) ? max : //
+      max + (float) Math.log(1.0 + Math.exp(negDiff));
   }
 
   /**
@@ -294,13 +287,8 @@ public final class SloppyMath  {
       max = ly;
       negDiff = lx - ly;
     }
-    if (max == Double.NEGATIVE_INFINITY) {
-      return max;
-    } else if (negDiff < -LOGTOLERANCE) {
-      return max;
-    } else {
-      return max + Math.log(1.0 + Math.exp(negDiff));
-    }
+    return (max == Double.NEGATIVE_INFINITY || negDiff < -LOGTOLERANCE) ? max : //
+      max + Math.log(1 + Math.exp(negDiff));
   }
 
   /**
